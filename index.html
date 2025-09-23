@@ -159,6 +159,26 @@
             gap: 10px;
         }
 
+        .coordinate-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+
+        .coordinate-display.active {
+            opacity: 1;
+        }
+
         .control-btn {
             background: white;
             border: none;
@@ -227,9 +247,9 @@
     </div>
 
     <div class="map-container">
-        <svg class="svg-map" viewBox="0 0 1200 1000" id="posterMap">
+        <svg class="svg-map" viewBox="0 0 1200 1600" id="posterMap">
             <!-- Background -->
-            <rect width="1200" height="1000" fill="#fafafa" stroke="#e0e0e0"/>
+            <rect width="1200" height="1600" fill="#808080" stroke="#606060"/>
             
             <!-- Buildings will be added via Layout API -->
             
@@ -244,6 +264,10 @@
             <button class="control-btn" id="zoomIn" title="Zoom In">+</button>
             <button class="control-btn" id="zoomOut" title="Zoom Out">−</button>
             <button class="control-btn" id="resetView" title="Reset View">⌂</button>
+        </div>
+
+        <div class="coordinate-display" id="coordinateDisplay">
+            x: 0, y: 0
         </div>
 
         <div class="info-panel" id="infoPanel">
@@ -282,111 +306,57 @@
             layout.addSVG({
                 id: 'parsons-building',
                 svgFile: 'Parsons.svg',
-                position: { x: 250, y: 50 },
-                style: { fill: '#D9D9D9' },
-                interactive: true,
-                onClick: () => {
-                    window.posterMap.infoTitle.textContent = 'Parsons Hall';
-                    window.posterMap.infoDescription.innerHTML = `
-                        <p><strong>Building:</strong> Parsons Hall - Main venue</p>
-                        <p><strong>Features:</strong> Central courtyard with poster display areas</p>
-                        <p><strong>Capacity:</strong> Primary conference building</p>
-                    `;
-                    window.posterMap.infoPanel.classList.add('active');
-                }
+                position: { x: 250, y: 85 }, // Centered vertically (+35px)
+                style: { fill: 'white' },
+                interactive: false
             });
 
             // Place Garden Boxes in the central courtyard of Parsons building
             layout.addSVG({
                 id: 'garden-boxes',
                 svgFile: 'Garden Boxes.svg',
-                position: { x: 520, y: 240 }, // Moved right for better centering in courtyard
+                position: { x: 520, y: 275 }, // Centered vertically (+35px)
                 transform: { scale: 0.6 }, // Larger to be more visible and proportional
                 style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 1 }, // Green garden colors
-                    interactive: true,
-                    onClick: () => {
-                        console.log('Garden boxes clicked!');
-                        window.posterMap.infoTitle.textContent = 'Garden Courtyard';
-                        window.posterMap.infoDescription.innerHTML = `
-                            <p><strong>Location:</strong> Central courtyard of Parsons Hall</p>
-                            <p><strong>Features:</strong> Outdoor poster display area with garden setting</p>
-                            <p><strong>Capacity:</strong> Perfect for informal discussions and networking</p>
-                        `;
-                        window.posterMap.infoPanel.classList.add('active');
-                    }
-                }).then(() => {
-                    console.log('Garden Boxes SVG loaded successfully');
-                }).catch(error => {
-                    console.error('Error loading Garden Boxes:', error);
-                    
-                    // Fallback: Create the garden boxes as simple shapes
-                    console.log('Creating fallback garden boxes...');
-                    
-                    // Left garden box (from SVG path)
-                    layout.addShape({
-                        id: 'garden-left',
-                        type: 'path',
-                        geometry: { d: 'M86,0 L86,32 L32,32 L32,183 L86,183 L86,215 L0,215 L0,0 Z' },
-                        position: { x: 400, y: 300 },
-                        style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 2 }
-                    });
-                    
-                    // Right garden box  
-                    layout.addShape({
-                        id: 'garden-right',
-                        type: 'path',
-                        geometry: { d: 'M176,215 L176,183 L230,183 L230,32 L176,32 L176,0 L262,0 L262,215 Z' },
-                        position: { x: 400, y: 300 },
-                        style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 2 }
-                    });
-                    
-                    // Center square
-                    layout.addShape({
-                        id: 'garden-center',
-                        type: 'rect',
-                        geometry: { width: 56, height: 56 },
-                        position: { x: 503, y: 379 }, // 400 + 103, 300 + 79
-                        style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 2 }
-                    });
+                interactive: false
+            });
+                
+                // Add Strauss Plaza positioned at specified coordinates, centered relative to buildings
+                layout.addSVG({
+                    id: 'strauss-plaza',
+                    svgFile: 'Strauss Plaza.svg',
+                    position: { x: 420, y: 566 }, // Centered vertically (+35px)
+                    style: { fill: 'white' }, // White for plaza
+                    interactive: false
+                });
+                
+                // Add Sprague building flush against left border, vertically centered with Strauss Plaza
+                layout.addSVG({
+                    id: 'sprague-building',
+                    svgFile: 'Sprague.svg',
+                    position: { x: 0, y: 485 }, // Flush left, centered vertically (+35px)
+                    style: { fill: 'white' },
+                    interactive: false
                 });
                 
                 // Add Jacobs Keck building (completely vertically flipped)
                 layout.addSVG({
                     id: 'jacobs-keck-building',
                     svgFile: 'Parsons.svg',
-                    position: { x: 250, y: 1220 }, // Positioned so the flipped building appears correctly
+                    position: { x: 250, y: 1255 }, // Centered vertically (+35px)
                     transform: { scale: 1, scaleY: -1 }, // Complete vertical flip
-                    style: { fill: '#D9D9D9' },
-                    interactive: true,
-                    onClick: () => {
-                        window.posterMap.infoTitle.textContent = 'Jacobs Keck Hall';
-                        window.posterMap.infoDescription.innerHTML = `
-                            <p><strong>Building:</strong> Jacobs Keck Hall - Secondary venue</p>
-                            <p><strong>Features:</strong> Central courtyard with additional poster displays</p>
-                            <p><strong>Capacity:</strong> Additional conference space</p>
-                        `;
-                        window.posterMap.infoPanel.classList.add('active');
-                    }
+                    style: { fill: 'white' },
+                    interactive: false
                 });
 
                 // Add Garden Boxes for Jacobs Keck (same distance from building as Parsons)
                 layout.addSVG({
                     id: 'jacobs-keck-garden-boxes',
                     svgFile: 'Garden Boxes.svg',
-                    position: { x: 520, y: 1030 }, // Same distance into courtyard as Parsons (190px from building edge)
+                    position: { x: 520, y: 1065 }, // Centered vertically (+35px)
                     transform: { scale: 0.6, scaleY: -1 }, // Same size as Parsons, but flipped
                     style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 1 },
-                    interactive: true,
-                    onClick: () => {
-                        console.log('Jacobs Keck garden boxes clicked!');
-                        window.posterMap.infoTitle.textContent = 'Jacobs Keck Courtyard';
-                        window.posterMap.infoDescription.innerHTML = `
-                            <p><strong>Location:</strong> Central courtyard of Jacobs Keck Hall</p>
-                            <p><strong>Features:</strong> Additional outdoor poster display area</p>
-                            <p><strong>Capacity:</strong> Extended networking and discussion space</p>
-                        `;
-                        window.posterMap.infoPanel.classList.add('active');
-                    }
+                    interactive: false
                 });
                 
                 // Make layout API available globally for easy testing

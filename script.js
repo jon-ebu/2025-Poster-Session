@@ -7,6 +7,7 @@ class PosterSessionMap {
         this.infoPanel = document.getElementById('infoPanel');
         this.infoTitle = document.getElementById('infoTitle');
         this.infoDescription = document.getElementById('infoDescription');
+        this.coordinateDisplay = document.getElementById('coordinateDisplay');
         
         this.currentZoom = 1;
         this.minZoom = 0.5;
@@ -93,6 +94,26 @@ class PosterSessionMap {
             isPanning = false;
         });
 
+        // Coordinate tracking
+        this.svg.addEventListener('mousemove', (e) => {
+            const rect = this.svg.getBoundingClientRect();
+            const viewBox = this.svg.viewBox.baseVal;
+            
+            // Calculate SVG coordinates
+            const scaleX = viewBox.width / rect.width;
+            const scaleY = viewBox.height / rect.height;
+            
+            const x = Math.round((e.clientX - rect.left) * scaleX + viewBox.x);
+            const y = Math.round((e.clientY - rect.top) * scaleY + viewBox.y);
+            
+            this.coordinateDisplay.textContent = `x: ${x}, y: ${y}`;
+            this.coordinateDisplay.classList.add('active');
+        });
+
+        this.svg.addEventListener('mouseleave', () => {
+            this.coordinateDisplay.classList.remove('active');
+        });
+
         // Keyboard navigation
         document.addEventListener('keydown', (e) => {
             if (e.target.classList.contains('poster-area')) {
@@ -167,49 +188,8 @@ class PosterSessionMap {
     }
 
     renderMarkers() {
+        // Markers disabled - no clickable markers will be rendered
         this.markersGroup.innerHTML = '';
-
-        this.markers.forEach(marker => {
-            const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            circle.setAttribute('cx', marker.x);
-            circle.setAttribute('cy', marker.y);
-            circle.setAttribute('r', '8');
-            circle.classList.add('marker');
-            circle.setAttribute('data-marker-id', marker.id);
-            circle.setAttribute('tabindex', '0');
-            circle.setAttribute('role', 'button');
-            circle.setAttribute('aria-label', `${marker.name} - ${marker.description}`);
-
-            const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            icon.setAttribute('x', marker.x);
-            icon.setAttribute('y', marker.y + 1);
-            icon.setAttribute('text-anchor', 'middle');
-            icon.setAttribute('dominant-baseline', 'central');
-            icon.setAttribute('font-size', '10');
-            icon.setAttribute('fill', 'white');
-            icon.setAttribute('pointer-events', 'none');
-            
-            // Simple icons based on type
-            const iconMap = {
-                'info': 'i',
-                'food': '☕',
-                'facility': '🚻',
-                'social': '👥'
-            };
-            icon.textContent = iconMap[marker.type] || '•';
-
-            circle.addEventListener('click', () => this.showMarkerInfo(marker.id));
-            circle.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                this.showMarkerInfo(marker.id);
-            });
-
-            group.appendChild(circle);
-            group.appendChild(icon);
-            this.markersGroup.appendChild(group);
-        });
     }
 
     selectArea(areaId) {
@@ -247,19 +227,10 @@ class PosterSessionMap {
         }, 10000);
     }
 
+    // Marker info functionality disabled
     showMarkerInfo(markerId) {
-        const marker = this.markers.find(m => m.id === markerId);
-        if (marker) {
-            this.infoTitle.textContent = marker.name;
-            this.infoDescription.innerHTML = `<p>${marker.description}</p>`;
-            this.infoPanel.classList.add('active');
-
-            setTimeout(() => {
-                if (this.infoPanel.classList.contains('active')) {
-                    this.hideInfo();
-                }
-            }, 5000);
-        }
+        // No marker info will be shown
+        return;
     }
 
     hideInfo() {
@@ -292,7 +263,7 @@ class PosterSessionMap {
 
     updateViewBox() {
         const baseWidth = 1200;
-        const baseHeight = 1000;
+        const baseHeight = 1600;
         const width = baseWidth / this.currentZoom;
         const height = baseHeight / this.currentZoom;
         const x = -this.panX + (baseWidth - width) / 2;
