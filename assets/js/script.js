@@ -10,8 +10,8 @@ class PosterSessionMap {
         this.coordinateDisplay = document.getElementById('coordinateDisplay');
         
         this.currentZoom = 1;
-        this.minZoom = 0.5;
-        this.maxZoom = 3;
+        this.minZoom = 0.25;
+        this.maxZoom = 8;
         this.panX = 0;
         this.panY = 0;
         this.selectedArea = null;
@@ -112,6 +112,20 @@ class PosterSessionMap {
 
         this.svg.addEventListener('mouseleave', () => {
             this.coordinateDisplay.classList.remove('active');
+        });
+
+        // Mouse wheel zoom
+        this.svg.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            // Simpler wheel zoom - just zoom in/out from center
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.currentZoom * zoomFactor));
+            
+            if (newZoom !== this.currentZoom) {
+                this.currentZoom = newZoom;
+                this.updateViewBox();
+            }
         });
 
         // Keyboard navigation
