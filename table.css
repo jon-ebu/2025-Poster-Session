@@ -1,0 +1,188 @@
+html,
+body {
+    height: 100%;
+    margin: 0px;
+    overflow-y: hidden;
+    background-color: #fafafa;
+}
+
+thead {
+    background-color: white;
+    color: black;
+}
+
+.table-container {
+    height: 400px; /* Adjust the height as needed */
+    overflow: auto;
+  }
+  
+  #tsvTable thead th {
+    position: sticky;
+    top: 0;
+    background-color: white; /* Ensure the header has a background color */
+    z-index: 1; /* Ensure the header is above the table rows */
+  }
+  
+
+.poster-title {
+    white-space: normal !important;
+    /* Allow text to wrap */
+    overflow-wrap: normal !important;
+    /* Prevent breaking long words */
+    word-break: normal !important;
+    /* Don't break words at arbitrary points */
+    max-width:150px;
+    /* Optional: Set a max width */
+}
+
+/* Easel cell with color icon styles */
+.easel-cell {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.easel-cell svg {
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+
+.pagination>.active>a, .pagination>.active>a:focus, .pagination>.active>a:hover, .pagination>.active>span, .pagination>.active>span:focus, .pagination>.active>span:hover {
+    background-color: #fdb913;
+    color: black;
+    border-color: #ccc;
+    font-weight: bold;
+}
+
+.pagination>li>a, .pagination>li>span {
+    color: black;
+    border-color: #ccc;
+}
+
+.pagination>li>a:hover, .pagination>li>span:hover {
+    background-color:#ccc; /* Change background color on hover */
+    color: black; /* Change text color on hover */
+    border-color:  #ccc /* Change border color on hover */
+}
+
+.fooicon {
+    color: black
+}
+#filter-form-container > form > div > div > div > button.btn.btn-primary {
+    background-color: #fdb913;
+    border-color:  #ccc;
+}
+
+.table>tbody>tr>td,
+.table>tbody>tr>th,
+.table>tfoot>tr>td,
+.table>tfoot>tr>th,
+.table>thead>tr>td,
+.table>thead>tr>th {
+    white-space: normal;
+    /* Allow text to wrap */
+    overflow-wrap: normal;
+    /* Prevent breaking long words */
+    word-break: normal;
+    /* Don't break words at arbitrary points */
+}
+
+table.footable-details>tbody>tr>td:nth-child(2) {
+    word-break: keep-all;
+}
+
+#searchbar {
+    z-index: 1000 !important;
+    display: flex;
+    position: relative !important;
+    width: 100% !important;
+    padding: 1rem;
+    padding-bottom: 0px;
+    /* Adjust padding as needed */
+    box-sizing: border-box;
+    /* Ensure padding is included in the element's total width */
+}
+
+/* Ensure the search bar container takes full width */
+#filter-form-container {
+    width: 100%;
+}
+
+/* Ensure the search bar itself takes full width */
+#filter-form-container input[type="text"] {
+    width: 100%;
+    display: flex;
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0px;
+}
+
+.table-responsive {
+    flex: 1;
+    /* Allow table to take available space */
+    overflow: auto;
+    /* Enable scrolling for table only */
+    margin-bottom: px;
+    /* Add space below the table */
+}
+
+.pagination-wrapper {
+    background: white;
+    z-index: 1000 !important;
+    padding: 5px;
+    width: 100%;
+    text-align: center !important;
+    position: relative !important;
+}
+
+/* Media query for mobile devices */
+@media (max-width: 576px) {
+    .pagination-wrapper .pagination li {
+        display: none;
+    }
+    .pagination-wrapper .pagination li:first-child,
+    .pagination-wrapper .pagination li:last-child,
+    .pagination-wrapper .pagination li.active {
+        display: inline-block;
+    }
+}
+
+/* Bold text for rows with data-expanded="true" */
+#tsvTable tr {
+    transition: background-color 0.3s ease; /* Add transition for background color */
+}
+#tsvTable tr[data-expanded="true"] {
+    font-weight: bold;
+    background-color: #fdb913;
+}
+
+#filter-form-container {
+    align-items: center; /* Center elements vertically */
+}
+
+/* Highlight effect for non-mobile view */
+@media (min-width: 577px) {
+    #tsvTable tr {
+        transition: background-color 0.3s ease; /* Add transition for background color */
+    }
+
+    #tsvTable tr.selected {
+        background-color: #fdb913; /* Yellow background color */
+    }
+}
+
+.footable-paging-external span.label, table.footable>tfoot>tr.footable-paging>td>span.label {
+    display: none;
+}
+
+@media screen and (max-width: 767px) {
+    .table-responsive>.table>tbody>tr>td, .table-responsive>.table>tbody>tr>th, .table-responsive>.table>tfoot>tr>td, .table-responsive>.table>tfoot>tr>th, .table-responsive>.table>thead>tr>td, .table-responsive>.table>thead>tr>th {
+        white-space: normal;
+    }
+}
