@@ -572,10 +572,10 @@ class LayoutAPI {
 
         // Create side A indicator (left or top side) - Mobile-friendly touch target
         const sideAIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        const offsetA = isVertical ? { x: -width/2.5, y: -height/3 } : { x: -width/3, y: -height/2.5 };
+        const offsetA = isVertical ? { x: -width/1.5, y: -height/2.8 } : { x: -width/3, y: -height/2.5 };
         sideAIndicator.setAttribute('cx', offsetA.x);
         sideAIndicator.setAttribute('cy', offsetA.y);
-        sideAIndicator.setAttribute('r', 12); // Made slightly larger to accommodate text
+        sideAIndicator.setAttribute('r', isVertical ? 14 : 12); // Larger circles for vertical mounts
         sideAIndicator.setAttribute('fill', this.getColorByEaselBoardId(config.sideA.easelBoard));
         sideAIndicator.setAttribute('stroke', 'white');
         sideAIndicator.setAttribute('stroke-width', 2);
@@ -595,24 +595,24 @@ class LayoutAPI {
         sideAText.setAttribute('font-size', '8');
         sideAText.setAttribute('font-weight', 'bold');
         sideAText.setAttribute('fill', 'white');
-        sideAText.setAttribute('pointer-events', 'none'); // Make text non-interactive
+        sideAText.setAttribute('pointer-events', 'none'); // Make text non-interactive to prevent hover conflicts
         sideAText.textContent = config.sideA.easelBoard || '';
         
         // Add invisible touch area for easier mobile interaction
         const sideATouchArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         sideATouchArea.setAttribute('cx', offsetA.x);
         sideATouchArea.setAttribute('cy', offsetA.y);
-        sideATouchArea.setAttribute('r', 24); // Slightly larger touch area to match bigger circles
+        sideATouchArea.setAttribute('r', isVertical ? 28 : 24); // Larger touch areas for vertical mounts
         sideATouchArea.setAttribute('fill', 'transparent');
         sideATouchArea.style.cursor = 'pointer';
         sideATouchArea.setAttribute('data-side', 'A');
 
         // Create side B indicator (right or bottom side) - Mobile-friendly touch target
         const sideBIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        const offsetB = isVertical ? { x: width/2.5, y: height/3 } : { x: width/3, y: height/2.5 };
+        const offsetB = isVertical ? { x: width/1.5, y: height/2.8 } : { x: width/3, y: height/2.5 };
         sideBIndicator.setAttribute('cx', offsetB.x);
         sideBIndicator.setAttribute('cy', offsetB.y);
-        sideBIndicator.setAttribute('r', 12); // Made slightly larger to accommodate text
+        sideBIndicator.setAttribute('r', isVertical ? 14 : 12); // Larger circles for vertical mounts
         sideBIndicator.setAttribute('fill', this.getColorByEaselBoardId(config.sideB.easelBoard));
         sideBIndicator.setAttribute('stroke', 'white');
         sideBIndicator.setAttribute('stroke-width', 2);
@@ -632,21 +632,34 @@ class LayoutAPI {
         sideBText.setAttribute('font-size', '8');
         sideBText.setAttribute('font-weight', 'bold');
         sideBText.setAttribute('fill', 'white');
-        sideBText.setAttribute('pointer-events', 'none'); // Make text non-interactive
+        sideBText.setAttribute('pointer-events', 'none'); // Make text non-interactive to prevent hover conflicts
         sideBText.textContent = config.sideB.easelBoard || '';
         
         // Add invisible touch area for easier mobile interaction
         const sideBTouchArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         sideBTouchArea.setAttribute('cx', offsetB.x);
         sideBTouchArea.setAttribute('cy', offsetB.y);
-        sideBTouchArea.setAttribute('r', 24); // Slightly larger touch area to match bigger circles
+        sideBTouchArea.setAttribute('r', isVertical ? 28 : 24); // Larger touch areas for vertical mounts
         sideBTouchArea.setAttribute('fill', 'transparent');
         sideBTouchArea.style.cursor = 'pointer';
         sideBTouchArea.setAttribute('data-side', 'B');
 
-        // Add click handlers for both sides
+        // Add hover handlers for both sides
+
+        // Create a shared timer for all markers on this mount to prevent conflicts
+        if (!window.posterInfoTimer) {
+            window.posterInfoTimer = null;
+        }
+        
         const showPosterInfo = (side) => {
+            // Always cancel any pending hide timer first
+            if (window.posterInfoTimer) {
+                clearTimeout(window.posterInfoTimer);
+                window.posterInfoTimer = null;
+            }
+            
             const poster = side === 'A' ? config.sideA : config.sideB;
+            const markerElement = side === 'A' ? sideAIndicator : sideBIndicator;
             
             if (window.posterMap) {
                 window.posterMap.infoTitle.textContent = `${poster.title || 'Poster Information'}`;
@@ -656,44 +669,120 @@ class LayoutAPI {
                     <p><strong>Poster Category:</strong> ${poster.category || 'N/A'}</p>
                     <p><strong>Easel Board:</strong> ${poster.easelBoard || poster.session || 'N/A'}</p>
                 `;
+                
+                // Position based on marker location to avoid covering it
+                positionInfoPanelSmart(markerElement);
+                
                 window.posterMap.infoPanel.classList.add('active');
             }
         };
-
-        // Add hide function
-        const hidePosterInfo = () => {
-            if (window.posterMap && window.posterMap.infoPanel) {
-                window.posterMap.infoPanel.classList.remove('active');
+        
+        const positionInfoPanelSmart = (markerElement) => {
+            const panel = window.posterMap.infoPanel;
+            
+            // Responsive dimensions for mobile
+            const isMobile = window.innerWidth <= 768;
+            const panelWidth = isMobile ? 220 : 280;
+            const panelHeight = isMobile ? 120 : 160;
+            const gap = isMobile ? 20 : 30; // Smaller gap on mobile
+            const margin = isMobile ? 15 : 20;
+            
+            // Get marker position relative to viewport
+            const markerRect = markerElement.getBoundingClientRect();
+            const markerCenterX = markerRect.left + markerRect.width / 2;
+            const markerCenterY = markerRect.top + markerRect.height / 2;
+            
+            const viewWidth = window.innerWidth;
+            const viewHeight = window.innerHeight;
+            
+            let panelX, panelY, arrowSide, arrowPosition;
+            
+            // Divide screen into zones for better positioning
+            const topThird = viewHeight / 3;
+            const bottomThird = viewHeight * 2 / 3;
+            const leftHalf = viewWidth / 2;
+            
+            if (markerCenterY < topThird) {
+                // Top third - position below marker
+                panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
+                panelY = markerCenterY + gap;
+                arrowSide = 'top';
+                arrowPosition = Math.max(15, Math.min(panelWidth - 15, markerCenterX - panelX));
+                
+            } else if (markerCenterY > bottomThird) {
+                // Bottom third - position above marker
+                panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
+                panelY = markerCenterY - panelHeight - gap;
+                arrowSide = 'bottom';
+                arrowPosition = Math.max(15, Math.min(panelWidth - 15, markerCenterX - panelX));
+                
+            } else {
+                // Middle third - position to the side
+                if (markerCenterX < leftHalf) {
+                    // Left side of screen - position to the right
+                    panelX = markerCenterX + gap;
+                    panelY = Math.max(margin, Math.min(viewHeight - panelHeight - margin, markerCenterY - panelHeight/2));
+                    arrowSide = 'left';
+                    arrowPosition = Math.max(15, Math.min(panelHeight - 15, markerCenterY - panelY));
+                } else {
+                    // Right side of screen - position to the left
+                    panelX = markerCenterX - panelWidth - gap;
+                    panelY = Math.max(margin, Math.min(viewHeight - panelHeight - margin, markerCenterY - panelHeight/2));
+                    arrowSide = 'right';
+                    arrowPosition = Math.max(15, Math.min(panelHeight - 15, markerCenterY - panelY));
+                }
             }
+            
+            // Apply positioning
+            panel.style.position = 'fixed';
+            panel.style.left = `${panelX}px`;
+            panel.style.top = `${panelY}px`;
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+            
+            // Set arrow properties
+            panel.style.setProperty('--arrow-side', arrowSide);
+            panel.style.setProperty('--arrow-position', `${arrowPosition}px`);
         };
 
-        // Add hover event handlers to both visible indicators and invisible touch areas
-        const addEventHandlers = (element, side) => {
-            // Mouse hover events
-            element.addEventListener('mouseenter', () => {
-                showPosterInfo(side);
-            });
+        const hidePosterInfo = () => {
+            // Use the global timer to prevent conflicts between markers
+            if (window.posterInfoTimer) {
+                clearTimeout(window.posterInfoTimer);
+            }
             
-            element.addEventListener('mouseleave', () => {
-                hidePosterInfo();
-            });
-
-            // Touch events for mobile (touch to show info briefly)
-            element.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                showPosterInfo(side);
-            });
-            
-            element.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                // Info will stay visible until user touches elsewhere or another poster
-            });
+            window.posterInfoTimer = setTimeout(() => {
+                if (window.posterMap && window.posterMap.infoPanel) {
+                    window.posterMap.infoPanel.classList.remove('active');
+                }
+                window.posterInfoTimer = null;
+            }, 200); // Reduced delay for faster response
         };
 
-        addEventHandlers(sideAIndicator, 'A');
-        addEventHandlers(sideATouchArea, 'A');
-        addEventHandlers(sideBIndicator, 'B');
-        addEventHandlers(sideBTouchArea, 'B');
+        // Simple circle hover only - use actual marker position
+        sideAIndicator.addEventListener('mouseenter', () => {
+            showPosterInfo('A');
+        });
+        sideAIndicator.addEventListener('mouseleave', () => {
+            hidePosterInfo();
+        });
+
+        sideBIndicator.addEventListener('mouseenter', () => {
+            showPosterInfo('B');
+        });
+        sideBIndicator.addEventListener('mouseleave', () => {
+            hidePosterInfo();
+        });
+
+        // Touch events
+        sideAIndicator.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            showPosterInfo('A');
+        });
+        sideBIndicator.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            showPosterInfo('B');
+        });
 
         // Keyboard support (only on visible indicators)
         [sideAIndicator, sideBIndicator].forEach(indicator => {
@@ -717,10 +806,8 @@ class LayoutAPI {
         group.appendChild(mount);
         group.appendChild(sideAIndicator);
         group.appendChild(sideAText);
-        group.appendChild(sideATouchArea);
         group.appendChild(sideBIndicator);
         group.appendChild(sideBText);
-        group.appendChild(sideBTouchArea);
 
         return group;
     }
