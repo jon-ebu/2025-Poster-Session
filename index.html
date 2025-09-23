@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f5f5f5;
+            background-color: #F8F6F0;
             color: #333;
             overflow-x: hidden;
         }
@@ -246,25 +246,6 @@
             z-index: 10000; /* Higher than info panel to ensure visibility */
         }
 
-        .coordinate-display {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            z-index: 10000; /* Ensure coordinate display is also visible above info panel */
-        }
-
-        .coordinate-display.active {
-            opacity: 1;
-        }
 
         .control-btn {
             background: white;
@@ -288,6 +269,7 @@
             background: #f5f5f5;
             transform: scale(1.05);
         }
+
 
         /* Mobile optimizations */
         @media (max-width: 768px) {
@@ -356,9 +338,9 @@
     </div>
 
     <div class="map-container">
-        <svg class="svg-map" viewBox="0 0 1200 1600" id="posterMap">
+        <svg class="svg-map" viewBox="0 0 1150 1360" id="posterMap">
             <!-- Background -->
-            <rect width="1200" height="1600" fill="#808080" stroke="#606060"/>
+            <rect width="1150" height="1360" fill="#F8F6F0" stroke="#606060"/>
             
             <!-- Buildings will be added via Layout API -->
             
@@ -375,14 +357,12 @@
             <button class="control-btn" id="resetView" title="Reset View">⌂</button>
         </div>
 
-        <div class="coordinate-display" id="coordinateDisplay">
-            x: 0, y: 0
-        </div>
 
         <div class="info-panel" id="infoPanel">
             <div class="info-title" id="infoTitle">Select a poster area</div>
             <div class="info-description" id="infoDescription">Hover over any poster area to view details</div>
         </div>
+
     </div>
 
     <script src="assets/js/script.js"></script>
@@ -411,62 +391,91 @@
             // Initialize the layout API
             const layout = window.posterMap.initializeLayoutAPI();
             
-            // Add Parsons building using Layout API
+            // Add Parsons building using Layout API (updated version with integrated garden boxes)
             layout.addSVG({
                 id: 'parsons-building',
-                svgFile: 'assets/svg/Parsons.svg',
-                position: { x: 250, y: 85 }, // Centered vertically (+35px)
-                style: { fill: 'white' },
+                svgFile: 'assets/svg/parsons.svg',
+                position: { x: 150, y: 40 }, // Same relative distance from Strauss as Jacobs Keck
+                style: { fill: '#C3BAA8' }, // Warm beige
                 interactive: false
-            });
+                });
 
-            // Place Garden Boxes in the central courtyard of Parsons building
-            layout.addSVG({
-                id: 'garden-boxes',
-                svgFile: 'assets/svg/Garden Boxes.svg',
-                position: { x: 520, y: 275 }, // Centered vertically (+35px)
-                transform: { scale: 0.6 }, // Larger to be more visible and proportional
-                style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 1 }, // Green garden colors
-                interactive: false
-            });
+                // Add "Parsons" label directly to SVG
+                const parsonsLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                parsonsLabel.setAttribute('x', '570');
+                parsonsLabel.setAttribute('y', '100');
+                parsonsLabel.setAttribute('fill', '#000');
+                parsonsLabel.setAttribute('font-size', '32px');
+                parsonsLabel.setAttribute('font-family', 'Arial, sans-serif');
+                parsonsLabel.setAttribute('font-weight', 'bold');
+                parsonsLabel.style.textRendering = 'optimizeLegibility';
+                parsonsLabel.style.fontSmooth = 'antialiased';
+                parsonsLabel.setAttribute('text-anchor', 'middle');
+                parsonsLabel.setAttribute('dominant-baseline', 'central');
+                parsonsLabel.textContent = 'Parsons';
+                parsonsLabel.setAttribute('id', 'parsons-label');
+                window.posterMap.svg.appendChild(parsonsLabel);
                 
                 // Add Strauss Plaza positioned at specified coordinates, centered relative to buildings
                 layout.addSVG({
                     id: 'strauss-plaza',
-                    svgFile: 'assets/svg/Strauss Plaza (2).svg',
-                    position: { x: 280, y: 566 }, // Moved further left by 70px more
-                    style: { fill: 'white' }, // White for plaza
+                    svgFile: 'assets/svg/strauss plaza.svg',
+                    position: { x: 226, y: 474 }, // Vertically centered between Parsons and Jacobs Keck
+                    style: { fill: '#EBDEC2', stroke: '#D4C4A8', strokeWidth: '1' }, // Warm beige color for plaza with subtle outline
                     interactive: false
                 });
                 
-                // Add Sprague building flush against left border, vertically centered with Strauss Plaza
+                // Add Sprague building flush against left border, scaled to match Strauss Plaza height
                 layout.addSVG({
                     id: 'sprague-building',
                     svgFile: 'assets/svg/Sprague.svg',
-                    position: { x: 0, y: 485 }, // Flush left, centered vertically (+35px)
-                    style: { fill: 'white' },
-                    interactive: false
-                });
-                
-                // Add Jacobs Keck building (completely vertically flipped)
-                layout.addSVG({
-                    id: 'jacobs-keck-building',
-                    svgFile: 'assets/svg/Parsons.svg',
-                    position: { x: 250, y: 1255 }, // Centered vertically (+35px)
-                    transform: { scale: 1, scaleY: -1 }, // Complete vertical flip
-                    style: { fill: 'white' },
+                    position: { x: 0, y: 474 }, // Same y-position as Strauss Plaza for perfect alignment
+                    transform: { scaleY: 392/376 }, // Scale height to match Strauss Plaza (392px)
+                    style: { fill: '#C3BAA8' }, // Warm beige
                     interactive: false
                 });
 
-                // Add Garden Boxes for Jacobs Keck (same distance from building as Parsons)
+                // Add "Sprague" label directly to SVG (rotated 90 degrees clockwise)
+                const spragueLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                spragueLabel.setAttribute('x', '100');
+                spragueLabel.setAttribute('y', '673');
+                spragueLabel.setAttribute('fill', '#000');
+                spragueLabel.setAttribute('font-size', '32px');
+                spragueLabel.setAttribute('font-family', 'Arial, sans-serif');
+                spragueLabel.setAttribute('font-weight', 'bold');
+                spragueLabel.style.textRendering = 'optimizeLegibility';
+                spragueLabel.style.fontSmooth = 'antialiased';
+                spragueLabel.setAttribute('text-anchor', 'middle');
+                spragueLabel.setAttribute('dominant-baseline', 'central');
+                spragueLabel.setAttribute('transform', 'rotate(90 100 673)');
+                spragueLabel.textContent = 'Sprague';
+                spragueLabel.setAttribute('id', 'sprague-label');
+                window.posterMap.svg.appendChild(spragueLabel);
+                
+                // Add Jacobs Keck building
                 layout.addSVG({
-                    id: 'jacobs-keck-garden-boxes',
-                    svgFile: 'assets/svg/Garden Boxes.svg',
-                    position: { x: 520, y: 1065 }, // Centered vertically (+35px)
-                    transform: { scale: 0.6, scaleY: -1 }, // Same size as Parsons, but flipped
-                    style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 1 },
+                    id: 'jacobs-keck-building',
+                    svgFile: 'assets/svg/jacobs-keck.svg',
+                    position: { x: 150, y: 920 }, // Shifted even further downward
+                    style: { fill: '#C3BAA8' }, // Warm beige
                     interactive: false
                 });
+
+                // Add "Jacobs/Keck" label directly to SVG
+                const jacobsKeckLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                jacobsKeckLabel.setAttribute('x', '570');
+                jacobsKeckLabel.setAttribute('y', '1235');
+                jacobsKeckLabel.setAttribute('fill', '#000');
+                jacobsKeckLabel.setAttribute('font-size', '32px');
+                jacobsKeckLabel.setAttribute('font-family', 'Arial, sans-serif');
+                jacobsKeckLabel.setAttribute('font-weight', 'bold');
+                jacobsKeckLabel.style.textRendering = 'optimizeLegibility';
+                jacobsKeckLabel.style.fontSmooth = 'antialiased';
+                jacobsKeckLabel.setAttribute('text-anchor', 'middle');
+                jacobsKeckLabel.setAttribute('dominant-baseline', 'central');
+                jacobsKeckLabel.textContent = 'Jacobs/Keck';
+                jacobsKeckLabel.setAttribute('id', 'jacobs-keck-label');
+                window.posterMap.svg.appendChild(jacobsKeckLabel);
                 
                 // Load poster data from TSV files - separate poster and mount data
                 layout.loadPostersFromTSV('data/Poster_Research_Scholarships.tsv', 'data/Mounts.tsv', {

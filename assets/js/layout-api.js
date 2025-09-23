@@ -706,7 +706,7 @@ class LayoutAPI {
             const panelHeight = Math.floor(basePanelHeight * (1 + contentFactor * 0.4)); // Up to 40% taller
             
             // Dynamic gap based on tooltip size - bigger tooltips need more distance
-            const baseGap = isMobile ? 20 : 30;
+            const baseGap = isMobile ? 35 : 50; // Increased base gap to prevent overlap
             const dynamicGap = Math.floor(baseGap + (panelHeight - basePanelHeight) * 0.3);
             const gap = dynamicGap;
             const margin = isMobile ? 15 : 20;
@@ -837,7 +837,7 @@ class LayoutAPI {
                     window.posterMap.infoPanel.classList.remove('active');
                 }
                 window.posterInfoTimer = null;
-            }, 100); // Reduced delay from 200ms to 100ms for faster response
+            }, 200); // Increased delay to prevent flickering
         };
 
         // Add hover effects for balloon animation and info display
@@ -848,6 +848,9 @@ class LayoutAPI {
             // Scale up the text font size
             const originalFontSize = parseFloat(markerText.getAttribute('data-original-font-size'));
             markerText.setAttribute('font-size', originalFontSize * 1.2); // 20% larger
+            
+            // Show mount ID in console for dev debugging
+            console.log(`Mount ID: ${config.id}`);
             
             showPosterInfo();
         });
@@ -972,6 +975,9 @@ class LayoutAPI {
             const originalFontSize = parseFloat(sideAText.getAttribute('data-original-font-size'));
             sideAText.setAttribute('font-size', originalFontSize * 1.2); // 20% larger
             
+            // Show mount ID in console for dev debugging
+            console.log(`Mount ID: ${config.id}`);
+            
             showPosterInfo('A');
         });
         
@@ -1045,6 +1051,9 @@ class LayoutAPI {
             // Scale up the text font size
             const originalFontSize = parseFloat(sideBText.getAttribute('data-original-font-size'));
             sideBText.setAttribute('font-size', originalFontSize * 1.2); // 20% larger
+            
+            // Show mount ID in console for dev debugging
+            console.log(`Mount ID: ${config.id}`);
             
             showPosterInfo('B');
         });
@@ -1188,7 +1197,7 @@ class LayoutAPI {
             const panelHeight = Math.floor(basePanelHeight * (1 + contentFactor * 0.4)); // Up to 40% taller
             
             // Dynamic gap based on tooltip size - bigger tooltips need more distance
-            const baseGap = isMobile ? 20 : 30;
+            const baseGap = isMobile ? 35 : 50; // Increased base gap to prevent overlap
             const dynamicGap = Math.floor(baseGap + (panelHeight - basePanelHeight) * 0.3);
             const gap = dynamicGap;
             const margin = isMobile ? 15 : 20;
@@ -1319,7 +1328,7 @@ class LayoutAPI {
                     window.posterMap.infoPanel.classList.remove('active');
                 }
                 window.posterInfoTimer = null;
-            }, 100); // Reduced delay from 200ms to 100ms for faster response
+            }, 200); // Increased delay to prevent flickering
         };
 
         // Combined hover effects for balloon animation and info display

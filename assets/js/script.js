@@ -7,7 +7,6 @@ class PosterSessionMap {
         this.infoPanel = document.getElementById('infoPanel');
         this.infoTitle = document.getElementById('infoTitle');
         this.infoDescription = document.getElementById('infoDescription');
-        this.coordinateDisplay = document.getElementById('coordinateDisplay');
         
         this.currentZoom = 1;
         this.minZoom = 0.25;
@@ -42,7 +41,13 @@ class PosterSessionMap {
         let startX, startY, initialPanX, initialPanY;
 
         this.svg.addEventListener('mousedown', (e) => {
-            if (e.target === this.svg || e.target.tagName === 'rect') {
+            // Allow panning on any element except interactive poster markers
+            const isInteractiveElement = e.target.closest('[data-side]') || 
+                                       e.target.closest('.color-marker') ||
+                                       e.target.closest('[data-point-id]') ||
+                                       e.target.classList.contains('color-marker');
+            
+            if (!isInteractiveElement) {
                 isPanning = true;
                 startX = e.clientX;
                 startY = e.clientY;
@@ -69,13 +74,23 @@ class PosterSessionMap {
 
         // Touch support
         this.svg.addEventListener('touchstart', (e) => {
-            e.preventDefault();
             const touch = e.touches[0];
-            isPanning = true;
-            startX = touch.clientX;
-            startY = touch.clientY;
-            initialPanX = this.panX;
-            initialPanY = this.panY;
+            const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+            
+            // Allow panning on any element except interactive poster markers
+            const isInteractiveElement = touchTarget?.closest('[data-side]') || 
+                                       touchTarget?.closest('.color-marker') ||
+                                       touchTarget?.closest('[data-point-id]') ||
+                                       touchTarget?.classList.contains('color-marker');
+            
+            if (!isInteractiveElement) {
+                e.preventDefault();
+                isPanning = true;
+                startX = touch.clientX;
+                startY = touch.clientY;
+                initialPanX = this.panX;
+                initialPanY = this.panY;
+            }
         });
 
         document.addEventListener('touchmove', (e) => {
@@ -94,25 +109,6 @@ class PosterSessionMap {
             isPanning = false;
         });
 
-        // Coordinate tracking
-        this.svg.addEventListener('mousemove', (e) => {
-            const rect = this.svg.getBoundingClientRect();
-            const viewBox = this.svg.viewBox.baseVal;
-            
-            // Calculate SVG coordinates
-            const scaleX = viewBox.width / rect.width;
-            const scaleY = viewBox.height / rect.height;
-            
-            const x = Math.round((e.clientX - rect.left) * scaleX + viewBox.x);
-            const y = Math.round((e.clientY - rect.top) * scaleY + viewBox.y);
-            
-            this.coordinateDisplay.textContent = `x: ${x}, y: ${y}`;
-            this.coordinateDisplay.classList.add('active');
-        });
-
-        this.svg.addEventListener('mouseleave', () => {
-            this.coordinateDisplay.classList.remove('active');
-        });
 
         // Mouse wheel zoom
         this.svg.addEventListener('wheel', (e) => {
@@ -285,6 +281,7 @@ class PosterSessionMap {
         
         this.svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
     }
+
 
     // Method to load external JSON data
     async loadExternalData(jsonUrl) {
