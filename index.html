@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
     <title>2025 Poster Session - Interactive Map</title>
     <style>
         * {
@@ -19,16 +19,30 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, #fdb913 0%, #e6a311 100%);
+            color: black;
             padding: 1rem;
             text-align: center;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: background 0.3s ease;
+        }
+
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .header-logo {
+            height: 40px;
+            width: auto;
         }
 
         .header h1 {
             font-size: 1.5rem;
-            margin-bottom: 0.5rem;
+            margin: 0;
         }
 
         .header p {
@@ -54,6 +68,9 @@
             /* Ensure SVG doesn't block info panel interactions */
             position: relative;
             z-index: 1;
+            min-width: 100%;
+            min-height: 100%;
+            transform-origin: center center;
         }
 
         .svg-map:active {
@@ -212,7 +229,7 @@
 
 
         .info-title {
-            font-size: 1.1rem;
+            font-size: 1.8rem;
             font-weight: 600;
             color: #1976d2;
             margin-bottom: 0.8rem;
@@ -222,7 +239,7 @@
         }
 
         .info-description {
-            font-size: 0.9rem;
+            font-size: 1.5rem;
             color: #444;
             line-height: 1.5;
         }
@@ -271,10 +288,303 @@
         }
 
 
+        /* Prevent text selection on markers and labels */
+        .svg-map text,
+        .svg-map tspan,
+        .info-panel,
+        .info-panel * {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Main content layout */
+        .main-content {
+            display: flex;
+            height: calc(100vh - 80px);
+            gap: 20px;
+            padding: 20px;
+            padding-bottom: 0;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .table-container {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+        }
+        
+        .table-responsive {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* Table styles */
+        #tsvTable {
+            margin-bottom: 0;
+        }
+
+        #tsvTable thead th {
+            position: sticky;
+            top: 0;
+            background-color: white;
+            z-index: 1;
+            border-bottom: 2px solid #ddd;
+            vertical-align: middle;
+        }
+
+        #tsvTable tbody td {
+            vertical-align: middle;
+        }
+
+        .poster-title {
+            white-space: normal !important;
+            overflow-wrap: normal !important;
+            word-break: normal !important;
+            max-width: 200px;
+        }
+
+        .easel-cell {
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .easel-cell svg {
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+
+        #tsvTable tr {
+            transition: background-color 0.3s ease;
+        }
+
+        #tsvTable tr.selected {
+            background-color: #fdb913;
+        }
+
+        #filter-form-container {
+            padding: 20px 20px 15px 20px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+
+        #searchbar {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        #clearSearch {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-left: none;
+            color: #6c757d;
+            padding: 8px 12px;
+        }
+        
+        #clearSearch:hover {
+            background-color: #e9ecef;
+            color: #495057;
+        }
+
+
+        /* Marker highlighting styles */
+        .marker-highlight {
+            animation: markerPulse 2s ease-in-out infinite;
+            transform: scale(1.2);
+            z-index: 1000 !important;
+        }
+        
+        @keyframes markerPulse {
+            0% { transform: scale(1.2); }
+            50% { transform: scale(1.4); }
+            100% { transform: scale(1.2); }
+        }
+        
+        /* Marker hover effects */
+        .marker-faded {
+            opacity: 0.2;
+            transition: opacity 0.3s ease;
+        }
+        
+        .marker-focused {
+            opacity: 1;
+            transform: scale(1.1);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 1000 !important;
+        }
+
+        .marker-fade-in {
+            animation: markerFadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes markerFadeIn {
+            from { opacity: 0.2; }
+            to { opacity: 1; }
+        }
+
+        .marker-hidden {
+            display: none !important;
+        }
+
+        /* FooTable mobile styles */
+        .footable-toggle {
+            background-color: #fdb913 !important;
+            color: black !important;
+            border: none !important;
+            border-radius: 3px !important;
+            padding: 4px 8px !important;
+            font-size: 14px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            transition: background-color 0.2s ease !important;
+        }
+
+        .footable-toggle:hover {
+            background-color: #e6a311 !important;
+            color: black !important;
+        }
+        
+        .footable-details {
+            background-color: #f8f9fa !important;
+            border-top: 1px solid #dee2e6 !important;
+            padding: 15px !important;
+            margin-top: 5px !important;
+        }
+        
+        .footable-details-row {
+            background-color: #f8f9fa !important;
+        }
+        
+        .footable-details-row td {
+            border-top: none !important;
+        }
+        
+        /* Style the expandable content */
+        .footable-details .footable-details-cell {
+            padding: 8px 0 !important;
+            border-bottom: 1px solid #e9ecef !important;
+        }
+        
+        .footable-details .footable-details-cell:last-child {
+            border-bottom: none !important;
+        }
+        
+        .footable-details .footable-details-label {
+            font-weight: bold !important;
+            color: #495057 !important;
+            margin-right: 10px !important;
+            min-width: 120px !important;
+            display: inline-block !important;
+        }
+
+        /* Mobile table styles */
+        @media (max-width: 768px) {
+            
+            /* Mobile search bar styles */
+            #filter-form-container {
+                width: 100%;
+                padding: 15px 20px 10px 20px;
+                margin-bottom: 10px;
+            }
+            
+            #filter-form-container .input-group {
+                width: 100% !important;
+            }
+            
+            #filter-form-container .form-group {
+                width: 100%;
+                margin: 0;
+            }
+            
+            #searchbar {
+                width: 100% !important;
+                font-size: 16px !important; /* Prevents zoom on iOS */
+                padding: 12px 15px;
+                border-radius: 8px;
+                border: 2px solid #ddd;
+                box-sizing: border-box;
+            }
+            
+            #searchbar:focus {
+                border-color: #fdb913;
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(253, 185, 19, 0.1);
+            }
+        }
+
         /* Mobile optimizations */
         @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+                height: calc(100vh - 80px);
+                padding: 10px;
+                padding-bottom: 0;
+                gap: 10px;
+            }
+
+            .map-container {
+                flex: 1;
+                height: 50%;
+            }
+
+            .table-container {
+                width: 100%;
+                flex: 1;
+                min-height: 50%;
+                max-height: none;
+                overflow: visible;
+            }
+            
+            .table-responsive {
+                -webkit-overflow-scrolling: touch;
+                overflow-y: auto;
+                overflow-x: hidden;
+                height: 100%;
+                max-height: none;
+                min-height: 0;
+                touch-action: pan-y;
+                overscroll-behavior: contain;
+            }
+            
+
             .header h1 {
-                font-size: 1.2rem;
+                font-size: 1.8rem;
+            }
+            
+            /* Prevent zoom on input focus */
+            input[type="text"], input[type="search"], textarea, select {
+                font-size: 16px !important;
+                transform: translateZ(0);
+                -webkit-appearance: none;
+                border-radius: 0;
+            }
+            
+            /* Ensure search bar is properly styled */
+            #searchbar {
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
+                border-radius: 8px;
             }
             
             .area-label {
@@ -282,21 +592,21 @@
             }
             
             .info-panel {
-                width: 220px;
+                width: 320px;
                 max-width: calc(100vw - 40px);
-                padding: 0.6rem;
-                font-size: 0.75rem;
+                padding: 1.2rem;
+                font-size: 1.4rem;
                 border-radius: 8px;
             }
             
             .info-title {
-                font-size: 0.8rem;
-                margin-bottom: 0.4rem;
+                font-size: 2rem;
+                margin-bottom: 1rem;
             }
             
             .info-description {
-                font-size: 0.7rem;
-                line-height: 1.3;
+                font-size: 1.6rem;
+                line-height: 1.5;
             }
             
             .info-description p {
@@ -333,41 +643,522 @@
 </head>
 <body>
     <div class="header">
-        <h1>2025 Poster Session</h1>
-        <p>Interactive Map - Tap poster areas to explore</p>
+        <div class="header-content">
+            <img src="assets/HMC BGW RGB 150dpi.png" alt="HMC Logo" class="header-logo">
+            <h1>HMC Poster Session Fall 2025</h1>
+        </div>
     </div>
 
-    <div class="map-container">
-        <svg class="svg-map" viewBox="0 0 1150 1360" id="posterMap">
-            <!-- Background -->
-            <rect width="1150" height="1360" fill="#F8F6F0" stroke="#606060"/>
-            
-            <!-- Buildings will be added via Layout API -->
-            
-            <!-- Poster areas will be dynamically generated -->
-            <g id="poster-areas"></g>
-            
-            <!-- Markers will be dynamically generated -->
-            <g id="markers"></g>
-        </svg>
+    <div class="main-content">
+        <div class="map-container">
+            <svg class="svg-map" viewBox="0 0 1150 1360" id="posterMap">
+                <!-- Background -->
+                <rect width="1150" height="1360" fill="#F8F6F0" stroke="#606060"/>
+                
+                <!-- Buildings will be added via Layout API -->
+                
+                <!-- Poster areas will be dynamically generated -->
+                <g id="poster-areas"></g>
+                
+                <!-- Markers will be dynamically generated -->
+                <g id="markers"></g>
+            </svg>
 
-        <div class="controls">
-            <button class="control-btn" id="zoomIn" title="Zoom In">+</button>
-            <button class="control-btn" id="zoomOut" title="Zoom Out">−</button>
-            <button class="control-btn" id="resetView" title="Reset View">⌂</button>
+            <div class="controls">
+                <button class="control-btn" id="zoomIn" title="Zoom In">+</button>
+                <button class="control-btn" id="zoomOut" title="Zoom Out">−</button>
+                <button class="control-btn" id="resetView" title="Reset View">⌂</button>
+            </div>
+
+            <div class="info-panel" id="infoPanel">
+                <div class="info-title" id="infoTitle">Select a poster area</div>
+                <div class="info-description" id="infoDescription">Hover over any poster area to view details</div>
+            </div>
         </div>
 
-
-        <div class="info-panel" id="infoPanel">
-            <div class="info-title" id="infoTitle">Select a poster area</div>
-            <div class="info-description" id="infoDescription">Hover over any poster area to view details</div>
+        <div class="table-container">
+            <div id="filter-form-container">
+                <form class="form-inline">
+                    <div class="form-group">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchbar" placeholder="Search posters...">
+                            <span class="input-group-btn">
+                                <button class="btn btn-default" type="button" id="clearSearch" style="display: none;">
+                                    <span class="glyphicon glyphicon-remove"></span>
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="table-responsive">
+                <table id="tsvTable" class="table table-striped table-hover footable" data-paging="false" data-filter="#searchbar" data-sorting="true" data-toggle="false" data-state="true">
+                </table>
+            </div>
         </div>
-
     </div>
 
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FooTable CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/jquery-footable/3.1.6/footable.bootstrap.min.css" rel="stylesheet">
+    
     <script src="assets/js/script.js"></script>
     <script src="assets/js/layout-api.js"></script>
+    <!-- jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <!-- FooTable JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-footable/3.1.6/footable.min.js"></script>
     <script>
+        // Table functionality
+        function createColorIcon(easelId) {
+            const colors = {
+                'B-1': '#FF6B6B', 'B-2': '#4ECDC4', 'B-3': '#45B7D1', 'B-4': '#96CEB4',
+                'B-5': '#FFEAA7', 'B-6': '#DDA0DD', 'B-7': '#98D8C8', 'B-8': '#F7DC6F',
+                'B-9': '#BB8FCE', 'B-10': '#85C1E9', 'B-11': '#F8C471', 'B-12': '#82E0AA',
+                'B-13': '#F1948A', 'B-14': '#85C1E9', 'B-15': '#D7BDE2', 'B-16': '#A9DFBF',
+                'B-17': '#F9E79F', 'B-18': '#D5A6BD', 'B-19': '#A3E4D7', 'B-20': '#FADBD8'
+            };
+            const color = colors[easelId] || '#95A5A6';
+            return `<svg width="16" height="16" viewBox="0 0 24 24" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
+                      <circle cx="12" cy="12" r="10" fill="${color}"/>
+                    </svg>`;
+        }
+
+        // Global variables for marker management
+        let markerObjs = [];
+        let allMarkers = [];
+
+        function displayTable(tableData) {
+            const table = document.getElementById("tsvTable");
+            table.innerHTML = "";
+
+            // Generate headers (excluding Mount ID and Side columns)
+            let headerRow = "<thead><tr>";
+            tableData[0].forEach((header, index) => {
+                // Skip Mount ID (index 5) and Side (index 6) columns
+                if (header === "Mount ID" || header === "Side") {
+                    return;
+                }
+                
+                if (header === "Easel Board" || header === "Poster Title" || header === "Student(s)") {
+                    // Keep these columns always visible
+                    if (header === "Poster Title") {
+                        headerRow += `<th class="poster-title">${header}</th>`;
+                    } else {
+                        headerRow += `<th>${header}</th>`;
+                    }
+                } else {
+                    // Hide other columns on mobile (xs breakpoint)
+                    headerRow += `<th data-breakpoints="xs">${header}</th>`;
+                }
+            });
+            headerRow += "</tr></thead>";
+            table.innerHTML += headerRow;
+
+            // Generate rows (excluding Mount ID and Side columns)
+            let bodyRows = "<tbody>";
+            for (let i = 1; i < tableData.length; i++) {
+                const rowData = tableData[i];
+                const easelBoard = rowData[1]; // Easel Board column
+                const posterTitle = rowData[2]; // Poster Title column
+                
+                let row = `<tr data-easel="${easelBoard}" data-title="${posterTitle}">`;
+                rowData.forEach((cell, index) => {
+                    const headerName = tableData[0][index];
+                    
+                    // Skip Mount ID and Side columns
+                    if (headerName === "Mount ID" || headerName === "Side") {
+                        return;
+                    }
+                    
+                    if (headerName === "Easel Board" || headerName === "Poster Title" || headerName === "Student(s)") {
+                        // Keep these columns always visible
+                        if (headerName === "Poster Title") {
+                            row += `<td class="poster-title">${cell}</td>`;
+                        } else if (headerName === "Easel Board") {
+                            const colorIcon = createColorIcon(cell);
+                            row += `<td class="easel-cell">${colorIcon}${cell}</td>`;
+                        } else {
+                            row += `<td>${cell}</td>`;
+                        }
+                    } else {
+                        // Hide other columns on mobile (xs breakpoint)
+                        row += `<td data-breakpoints="xs">${cell}</td>`;
+                    }
+                });
+                row += "</tr>";
+                bodyRows += row;
+            }
+            bodyRows += "</tbody>";
+            table.innerHTML += bodyRows;
+
+            // Initialize FooTable with mobile breakpoints
+            console.log('FooTable available:', typeof $.fn.footable !== 'undefined');
+            if (typeof $.fn.footable !== 'undefined') {
+                console.log('Initializing FooTable...');
+                $('#tsvTable').footable({
+                    breakpoints: {
+                        xs: 0,
+                        sm: 0,
+                        md: 0,
+                        lg: 0
+                    },
+                    sorting: { enabled: true },
+                    filtering: { enabled: false },
+                    toggle: false,
+                    paging: { enabled: false },
+                    'on': {
+                        'postinit.ft.table': function (e, ft) {
+                            console.log('FooTable initialized successfully');
+                            // Sort by Easel Board column by default
+                            const easelColumnIndex = 1; // Easel Board is the second column
+                            ft.sort(easelColumnIndex, 'asc');
+                            
+                        }
+                    }
+                });
+                
+                // Add footable_toggle event handler for expandable rows
+                $("#tsvTable").on("footable_toggle", function (e) {
+                    console.log('Footable toggle event triggered');
+                    // Get the current toggle element that was clicked
+                    var $currentToggle = $(e.target).closest("tr");
+
+                    // Check if the current toggle is active
+                    if ($currentToggle.attr("data-expanded") === "true") {
+                        // Untoggle all other rows except the current one
+                        $("#tsvTable")
+                            .find('tr[data-expanded="true"]')
+                            .not($currentToggle)
+                            .each(function () {
+                                $(this).removeAttr("data-expanded");
+                            });
+                    } else {
+                        // Set the current toggle to expanded
+                        $currentToggle.attr("data-expanded", "true");
+                    }
+                });
+            } else {
+                console.error('FooTable is not available');
+            }
+
+            // Add table event listeners
+            addTableEventListeners();
+        }
+
+        function addTableEventListeners() {
+            // Add click listeners to table rows for marker highlighting
+            $('#tsvTable tbody tr').on('click', function(e) {
+                // Don't trigger if clicking on the toggle button itself
+                if ($(e.target).closest('.footable-toggle').length) {
+                    return;
+                }
+                
+                const easelBoard = $(this).data('easel');
+                const posterTitle = $(this).data('title');
+                
+                if (easelBoard) {
+                    // Highlight the clicked marker and show its tooltip
+                    highlightMarkerByEasel(easelBoard);
+                    
+                    // Fade other markers
+                    fadeOtherMarkers(easelBoard);
+                    
+                    // Highlight the clicked row
+                    $(this).addClass('selected');
+                    
+                    // Remove highlight from other rows
+                    $('#tsvTable tbody tr').not(this).removeClass('selected');
+                }
+            });
+        }
+
+        // Marker management functions
+        function highlightMarkerByEasel(easelBoard) {
+            console.log(`=== MARKER LOOKUP DEBUG ===`);
+            console.log(`Looking for easel: ${easelBoard}`);
+            console.log(`Total markers available: ${allMarkers.length}`);
+            console.log(`All available easel board IDs:`, allMarkers.map(m => m.easelBoardId));
+            
+            // First remove any existing highlights
+            removeMarkerHighlights();
+            
+            // Find the matching marker by easel board ID
+            let targetMarker = null;
+            let foundIndex = -1;
+            
+            allMarkers.forEach((markerData, index) => {
+                console.log(`Checking marker ${index}: easelBoardId="${markerData.easelBoardId}", mountId="${markerData.mountId}"`);
+                if (markerData.easelBoardId === easelBoard) {
+                    targetMarker = markerData.marker;
+                    foundIndex = index;
+                    console.log(`✓ MATCH FOUND at index ${index}!`);
+                }
+            });
+            
+            if (foundIndex === -1) {
+                console.log(`✗ NO MATCH FOUND for easel: ${easelBoard}`);
+                console.log(`Available easel board IDs:`, allMarkers.map(m => m.easelBoardId));
+                console.log(`Looking for exact match: "${easelBoard}"`);
+                console.log(`Available IDs that start with "CS":`, allMarkers.filter(m => m.easelBoardId.startsWith('CS')).map(m => m.easelBoardId));
+                return;
+            }
+            
+            if (targetMarker) {
+                console.log('Marker found, highlighting');
+                console.log('Marker object:', targetMarker);
+                console.log('Available methods:', Object.getOwnPropertyNames(targetMarker));
+                
+                // targetMarker is already the SVG element, not a marker object
+                const markerElement = targetMarker;
+                if (markerElement) {
+                    markerElement.classList.add('marker-highlight');
+                    console.log('Added highlight class to marker element');
+                }
+                
+                // Get position from the transform attribute
+                const transform = markerElement.getAttribute('transform');
+                console.log('Marker transform:', transform);
+                
+                if (transform && window.posterMap && window.posterMap.panTo) {
+                    // Extract x, y from transform="translate(x, y)"
+                    const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+                    if (match) {
+                        const x = parseFloat(match[1]);
+                        const y = parseFloat(match[2]);
+                        console.log('Panning to position:', x, y);
+                        window.posterMap.panTo(x, y);
+                    }
+                }
+                
+                // Try to trigger a mouseenter event on the marker element to show tooltip
+                console.log('Triggering mouseenter event on marker element');
+                if (markerElement) {
+                    // Create and dispatch a mouseenter event for SVG elements
+                    const mouseEnterEvent = new MouseEvent('mouseenter', {
+                        view: window,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    markerElement.dispatchEvent(mouseEnterEvent);
+                }
+                
+                // Keep popup open until another row is clicked
+                // Don't auto-close the popup
+            } else {
+                console.error(`Marker not found for easel: ${easelBoard}`);
+            }
+        }
+
+        // Remove all marker highlights
+        function removeMarkerHighlights() {
+            document.querySelectorAll('.marker-highlight').forEach(element => {
+                element.classList.remove('marker-highlight');
+            });
+        }
+        
+        // Fade other markers when one is selected
+        function fadeOtherMarkers(selectedEasel) {
+            allMarkers.forEach(markerData => {
+                if (markerData.easelBoardId !== selectedEasel) {
+                    const markerElement = markerData.marker; // marker is already the SVG element
+                    
+                    if (markerElement) {
+                        markerElement.classList.add('marker-faded');
+                    }
+                }
+            });
+        }
+        
+        // Restore all marker opacity
+        function restoreMarkerOpacity() {
+            allMarkers.forEach(markerData => {
+                const markerElement = markerData.marker; // marker is already the SVG element
+                
+                if (markerElement) {
+                    markerElement.classList.remove('marker-faded');
+                }
+            });
+        }
+
+        // Fade out all markers except the hovered one (for hover effects)
+        function fadeOtherMarkersOnHover(hoveredMarker) {
+            console.log('fadeOtherMarkersOnHover called, total markers:', allMarkers.length);
+            
+            // Add a class to body to indicate hover state
+            document.body.classList.add('marker-hover-active');
+            
+            let fadedCount = 0;
+            let focusedCount = 0;
+            
+            allMarkers.forEach(markerData => {
+                const marker = markerData.marker;
+                const markerElement = marker.getElement();
+                if (markerElement && marker !== hoveredMarker) {
+                    markerElement.classList.add('marker-faded');
+                    fadedCount++;
+                } else if (markerElement && marker === hoveredMarker) {
+                    markerElement.classList.add('marker-focused');
+                    focusedCount++;
+                }
+            });
+            
+            console.log(`Applied marker-faded to ${fadedCount} markers, marker-focused to ${focusedCount} markers`);
+        }
+
+
+        // Enhanced search functionality
+        function initializeSearch() {
+            const searchInput = document.getElementById('searchbar');
+            if (!searchInput) return;
+            
+            // Clear search when input is empty
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                const table = document.getElementById('tsvTable');
+                const rows = table.querySelectorAll('tbody tr');
+                
+                // Track which markers should be visible
+                const visibleEasels = new Set();
+                
+                rows.forEach(row => {
+                    if (searchTerm === '') {
+                        // Reset row display
+                        row.style.display = '';
+                        row.classList.remove('marker-faded');
+                        const easel = row.getAttribute('data-easel');
+                        if (easel) visibleEasels.add(easel);
+                        return;
+                    }
+                    
+                    // Get all text content from the row
+                    const rowText = row.textContent.toLowerCase();
+                    
+                    if (rowText.includes(searchTerm)) {
+                        row.style.display = '';
+                        row.classList.remove('marker-faded');
+                        const easel = row.getAttribute('data-easel');
+                        if (easel) visibleEasels.add(easel);
+                    } else {
+                        row.style.display = 'none';
+                        row.classList.add('marker-faded');
+                    }
+                });
+                
+                // Update marker visibility based on search
+                updateMarkerVisibility(visibleEasels);
+                
+                // Reset FooTable filtering if search is empty
+                if (searchTerm === '' && typeof $.fn.footable !== 'undefined') {
+                    $('#tsvTable').trigger('footable_clear_filter');
+                }
+                
+                // Restore marker opacity when search is cleared
+                if (searchTerm === '') {
+                    restoreMarkerOpacity();
+                }
+            });
+            
+            // Also handle keyup for immediate response
+            searchInput.addEventListener('keyup', function() {
+                this.dispatchEvent(new Event('input'));
+            });
+            
+            // Handle clear button
+            const clearButton = document.getElementById('clearSearch');
+            if (clearButton) {
+                clearButton.addEventListener('click', function() {
+                    resetSearch();
+                });
+                
+                // Show/hide clear button based on input content
+                searchInput.addEventListener('input', function() {
+                    if (this.value.length > 0) {
+                        clearButton.style.display = 'inline-block';
+                    } else {
+                        clearButton.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        function updateMarkerVisibility(visibleEasels) {
+            allMarkers.forEach(markerData => {
+                const marker = markerData.marker;
+                const markerElement = marker.getElement();
+                
+                if (visibleEasels.has(markerData.easelBoardId)) {
+                    // Show marker
+                    if (markerElement) {
+                        markerElement.style.display = '';
+                        markerElement.classList.remove('marker-hidden');
+                    }
+                } else {
+                    // Hide marker
+                    if (markerElement) {
+                        markerElement.style.display = 'none';
+                        markerElement.classList.add('marker-hidden');
+                    }
+                }
+            });
+        }
+        
+        // Function to reset search completely
+        function resetSearch() {
+            const searchInput = document.getElementById('searchbar');
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+            }
+        }
+
+        function loadTableData() {
+            fetch('data/Poster_Research_Scholarships.tsv')
+                .then(response => response.text())
+                .then(data => {
+                    const lines = data.trim().split('\n');
+                    const tableData = lines.map(line => line.split('\t'));
+                    
+                    console.log('=== TABLE DATA DEBUG ===');
+                    console.log('Table data loaded:', tableData.length, 'rows');
+                    console.log('Headers:', tableData[0]);
+                    
+                    // Check easel board IDs in the table data
+                    const easelBoardColumnIndex = tableData[0].indexOf('Easel Board');
+                    if (easelBoardColumnIndex !== -1) {
+                        const easelBoardIds = [];
+                        for (let i = 1; i < tableData.length; i++) {
+                            if (tableData[i][easelBoardColumnIndex]) {
+                                easelBoardIds.push(tableData[i][easelBoardColumnIndex]);
+                            }
+                        }
+                    console.log('Easel Board IDs in table data:', easelBoardIds);
+                    console.log('Unique Easel Board IDs:', [...new Set(easelBoardIds)]);
+                    
+                    // Compare with registered markers
+                    if (allMarkers.length > 0) {
+                        const tableEaselIds = new Set(easelBoardIds);
+                        const markerEaselIds = new Set(allMarkers.map(m => m.easelBoardId));
+                        
+                        const missingInMarkers = [...tableEaselIds].filter(id => !markerEaselIds.has(id));
+                        const missingInTable = [...markerEaselIds].filter(id => !tableEaselIds.has(id));
+                        
+                        console.log('Easel IDs in table but NOT in markers:', missingInMarkers);
+                        console.log('Easel IDs in markers but NOT in table:', missingInTable);
+                    }
+                    }
+                    
+                    displayTable(tableData);
+                    initializeSearch();
+                })
+                .catch(error => {
+                    console.error('Error loading table data:', error);
+                });
+        }
+
         // Layout API Usage
         function initializeLayout() {
             // Wait for both posterMap instance and PosterSessionMap class
@@ -485,6 +1276,97 @@
                     postersPerRow: 8,      // Number of mounts per row (fallback for grid)
                     alternateOrientation: true  // Mix vertical and horizontal mounts (fallback for grid)
                 });
+
+                // Register markers for table interaction
+                console.log(`=== MARKER REGISTRATION DEBUG ===`);
+                console.log('window.layout:', window.layout);
+                console.log('window.layout.layoutElements:', window.layout?.layoutElements);
+                console.log('layoutElements size:', window.layout?.layoutElements?.size);
+                
+                if (window.layout && window.layout.layoutElements) {
+                    console.log(`Layout elements available: ${window.layout.layoutElements.size}`);
+                    
+                    allMarkers = [];
+                    window.layout.layoutElements.forEach((element, id) => {
+                        console.log(`Processing element: ${id}, type: ${element.type}`);
+                        
+                        if (element.type === 'poster-mount' && element.element) {
+                            // Get the mount ID from the element ID
+                            const mountId = id;
+                            console.log(`  Mount ID: ${mountId}`);
+                            
+                            // Get the easel board ID from the poster data
+                            // Check both sideA and sideB for easel board IDs
+                            const easelBoardIds = [];
+                            console.log(`  SideA data:`, element.sideA);
+                            console.log(`  SideB data:`, element.sideB);
+                            
+                            if (element.sideA?.easelBoard) {
+                                easelBoardIds.push(element.sideA.easelBoard);
+                                console.log(`  Found sideA easelBoard: ${element.sideA.easelBoard}`);
+                            }
+                            if (element.sideB?.easelBoard) {
+                                easelBoardIds.push(element.sideB.easelBoard);
+                                console.log(`  Found sideB easelBoard: ${element.sideB.easelBoard}`);
+                            }
+                            
+                            console.log(`  All easel board IDs for this mount:`, easelBoardIds);
+                            
+                            // Create a marker entry for each easel board ID
+                            easelBoardIds.forEach(easelBoardId => {
+                                allMarkers.push({
+                                    marker: element.element,
+                                    easelBoardId: easelBoardId,
+                                    mountId: mountId
+                                });
+                                console.log(`  Registered marker: easelBoardId=${easelBoardId}, mountId=${mountId}`);
+                            });
+                        }
+                    });
+                    console.log(`=== REGISTRATION COMPLETE ===`);
+                    console.log(`Registered ${allMarkers.length} markers for table interaction`);
+                    console.log('Sample marker data:', allMarkers[0]);
+                    console.log('All easel board IDs:', allMarkers.map(m => m.easelBoardId));
+                } else {
+                    console.log('Layout or layoutElements not available');
+                    console.log('window.layout:', window.layout);
+                    if (window.layout) {
+                        console.log('window.layout.layoutElements:', window.layout.layoutElements);
+                    }
+                }
+                
+                // Try to register markers again after a delay
+                setTimeout(() => {
+                    console.log(`=== DELAYED MARKER REGISTRATION ===`);
+                    if (window.layout && window.layout.layoutElements && window.layout.layoutElements.size > 0) {
+                        console.log('Layout elements now available, re-registering markers...');
+                        // Re-run the registration logic here
+                        allMarkers = [];
+                        window.layout.layoutElements.forEach((element, id) => {
+                            if (element.type === 'poster-mount' && element.element) {
+                                const mountId = id;
+                                const easelBoardIds = [];
+                                if (element.sideA?.easelBoard) {
+                                    easelBoardIds.push(element.sideA.easelBoard);
+                                }
+                                if (element.sideB?.easelBoard) {
+                                    easelBoardIds.push(element.sideB.easelBoard);
+                                }
+                                easelBoardIds.forEach(easelBoardId => {
+                                    allMarkers.push({
+                                        marker: element.element,
+                                        easelBoardId: easelBoardId,
+                                        mountId: mountId
+                                    });
+                                });
+                            }
+                        });
+                        console.log(`Delayed registration complete: ${allMarkers.length} markers`);
+                        console.log('All easel board IDs:', allMarkers.map(m => m.easelBoardId));
+                    } else {
+                        console.log('Layout elements still not available after delay');
+                    }
+                }, 2000);
                 
                 
                 // Make layout API available globally for easy testing
@@ -492,9 +1374,29 @@
                 console.log('Layout API initialized. Use window.layout to add elements.');
         }
         
+        // Prevent zoom out beyond initial scale for map SVG only
+        function preventMapZoomOut() {
+            const svgMap = document.querySelector('.svg-map');
+            if (!svgMap) return;
+            
+            const initialScale = 1.0;
+            const currentZoom = window.outerWidth / window.innerWidth;
+            
+            if (currentZoom < initialScale) {
+                // Reset map SVG to minimum scale if zoomed out too far
+                svgMap.style.transform = `scale(${initialScale})`;
+            }
+        }
+        
+        // Monitor zoom changes for map only
+        window.addEventListener('resize', preventMapZoomOut);
+        window.addEventListener('orientationchange', preventMapZoomOut);
+        
         // Start initialization when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             initializeLayout();
+            loadTableData();
+            preventMapZoomOut(); // Initial check
         });
     </script>
 </body>
