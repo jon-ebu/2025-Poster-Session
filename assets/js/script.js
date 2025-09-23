@@ -9,10 +9,13 @@ class PosterSessionMap {
         this.infoDescription = document.getElementById('infoDescription');
         
         this.currentZoom = 1;
-        this.minZoom = 0.25;
+        this.minZoom = 1;
         this.maxZoom = 8;
         this.panX = 0;
         this.panY = 0;
+        this.panVelocityX = 0;
+        this.panVelocityY = 0;
+        this.panInertiaFrame = null;
         this.selectedArea = null;
         
         this.initializeData();
@@ -37,86 +40,145 @@ class PosterSessionMap {
         document.getElementById('resetView').addEventListener('click', () => this.resetView());
 
         // Pan functionality (touch and mouse)
-        let isPanning = false;
+let isPanning = false;
         let startX, startY, initialPanX, initialPanY;
+        let lastPointerX = 0;
+        let lastPointerY = 0;
+        let lastPointerTime = 0;
+
+        const recordVelocity = (clientX, clientY) => {
+            const now = performance.now();
+            if (lastPointerTime) {
+                const deltaTime = now - lastPointerTime;
+                if (deltaTime > 0) {
+                    const deltaPanX = (clientX - lastPointerX) / this.currentZoom;
+                    const deltaPanY = (clientY - lastPointerY) / this.currentZoom;
+                    const vx = deltaPanX / deltaTime;
+                    const vy = deltaPanY / deltaTime;
+                    const maxVelocity = 0.5;
+                    this.panVelocityX = Math.max(-maxVelocity, Math.min(maxVelocity, vx));
+                    this.panVelocityY = Math.max(-maxVelocity, Math.min(maxVelocity, vy));
+                }
+            }
+            lastPointerX = clientX;
+            lastPointerY = clientY;
+            lastPointerTime = now;
+        };
+
+        const beginPan = (clientX, clientY) => {
+            isPanning = true;
+            startX = clientX;
+            startY = clientY;
+            initialPanX = this.panX;
+            initialPanY = this.panY;
+            this.stopPanInertia(true);
+            lastPointerTime = 0;
+            lastPointerX = clientX;
+            lastPointerY = clientY;
+            recordVelocity(clientX, clientY);
+            this.svg.style.cursor = 'grabbing';
+        };
+
+        const updatePan = (clientX, clientY) => {
+            const dx = (clientX - startX) / this.currentZoom;
+            const dy = (clientY - startY) / this.currentZoom;
+            this.panX = initialPanX + dx;
+            this.panY = initialPanY + dy;
+            this.updateViewBox();
+            recordVelocity(clientX, clientY);
+        };
+
+        const endPan = () => {
+            if (!isPanning) {
+                return;
+            }
+            isPanning = false;
+            this.svg.style.cursor = 'grab';
+            this.startPanInertia();
+        };
+
+        this.svg.style.cursor = 'grab';
 
         this.svg.addEventListener('mousedown', (e) => {
-            // Allow panning on any element except interactive poster markers
             const isInteractiveElement = e.target.closest('[data-side]') || 
                                        e.target.closest('.color-marker') ||
                                        e.target.closest('[data-point-id]') ||
                                        e.target.classList.contains('color-marker');
-            
             if (!isInteractiveElement) {
-                isPanning = true;
-                startX = e.clientX;
-                startY = e.clientY;
-                initialPanX = this.panX;
-                initialPanY = this.panY;
-                this.svg.style.cursor = 'grabbing';
+                e.preventDefault();
+                beginPan(e.clientX, e.clientY);
             }
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (isPanning) {
-                const dx = (e.clientX - startX) / this.currentZoom;
-                const dy = (e.clientY - startY) / this.currentZoom;
-                this.panX = initialPanX + dx;
-                this.panY = initialPanY + dy;
-                this.updateViewBox();
+            if (!isPanning) {
+                return;
             }
+            updatePan(e.clientX, e.clientY);
         });
 
         document.addEventListener('mouseup', () => {
-            isPanning = false;
-            this.svg.style.cursor = 'grab';
+            endPan();
+        });
+
+        // Global click handler to close info panel when clicking empty map space
+        this.svg.addEventListener('click', (e) => {
+            const clickedMarker = e.target.closest('[data-side]') || e.target.closest('.color-marker');
+            if (!clickedMarker) {
+                this.hideInfo();
+            }
         });
 
         // Touch support
-        this.svg.addEventListener('touchstart', (e) => {
+        const touchStartHandler = (e) => {
             const touch = e.touches[0];
             const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-            
-            // Allow panning on any element except interactive poster markers
             const isInteractiveElement = touchTarget?.closest('[data-side]') || 
                                        touchTarget?.closest('.color-marker') ||
                                        touchTarget?.closest('[data-point-id]') ||
                                        touchTarget?.classList.contains('color-marker');
-            
             if (!isInteractiveElement) {
                 e.preventDefault();
-                isPanning = true;
-                startX = touch.clientX;
-                startY = touch.clientY;
-                initialPanX = this.panX;
-                initialPanY = this.panY;
+                beginPan(touch.clientX, touch.clientY);
             }
-        });
+        };
 
-        document.addEventListener('touchmove', (e) => {
-            if (isPanning && e.touches.length === 1) {
-                e.preventDefault();
-                const touch = e.touches[0];
-                const dx = (touch.clientX - startX) / this.currentZoom;
-                const dy = (touch.clientY - startY) / this.currentZoom;
-                this.panX = initialPanX + dx;
-                this.panY = initialPanY + dy;
-                this.updateViewBox();
+        try {
+            this.svg.addEventListener('touchstart', touchStartHandler, { passive: false });
+        } catch (err) {
+            this.svg.addEventListener('touchstart', touchStartHandler);
+        }
+
+        const touchMoveHandler = (e) => {
+            if (!isPanning || e.touches.length !== 1) {
+                return;
             }
-        });
+            e.preventDefault();
+            const touch = e.touches[0];
+            updatePan(touch.clientX, touch.clientY);
+        };
 
-        document.addEventListener('touchend', () => {
-            isPanning = false;
+        try {
+            document.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        } catch (err) {
+            document.addEventListener('touchmove', touchMoveHandler);
+        }
+
+        document.addEventListener('touchend', (e) => {
+            if (e.touches.length === 0) {
+                endPan();
+            }
         });
 
 
         // Mouse wheel zoom
         this.svg.addEventListener('wheel', (e) => {
             e.preventDefault();
+            this.stopPanInertia(true);
             
             // Simpler wheel zoom - just zoom in/out from center
             const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-            const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.currentZoom * zoomFactor));
+            const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.currentZoom * zoomFactor));
             
             if (newZoom !== this.currentZoom) {
                 this.currentZoom = newZoom;
@@ -254,16 +316,20 @@ class PosterSessionMap {
     }
 
     zoomIn() {
+        this.stopPanInertia(true);
         this.currentZoom = Math.min(this.maxZoom, this.currentZoom * 1.2);
         this.updateViewBox();
     }
 
     zoomOut() {
-        this.currentZoom = Math.max(this.minZoom, this.currentZoom / 1.2);
+        this.stopPanInertia(true);
+        const nextZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.currentZoom / 1.2));
+        this.currentZoom = nextZoom;
         this.updateViewBox();
     }
 
     resetView() {
+        this.stopPanInertia(true);
         this.currentZoom = 1;
         this.panX = 0;
         this.panY = 0;
@@ -280,6 +346,53 @@ class PosterSessionMap {
         const y = -this.panY + (baseHeight - height) / 2;
         
         this.svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+    }
+
+    stopPanInertia(resetVelocity = false) {
+        if (this.panInertiaFrame) {
+            cancelAnimationFrame(this.panInertiaFrame);
+            this.panInertiaFrame = null;
+        }
+        if (resetVelocity) {
+            this.panVelocityX = 0;
+            this.panVelocityY = 0;
+        }
+    }
+
+    startPanInertia() {
+        const minVelocity = 0.002;
+        const currentVelocity = Math.hypot(this.panVelocityX, this.panVelocityY);
+        if (currentVelocity < minVelocity) {
+            this.stopPanInertia(true);
+            return;
+        }
+
+        this.stopPanInertia();
+
+        const decay = 0.92;
+        let lastTime = performance.now();
+
+        const step = (time) => {
+            const dt = time - lastTime;
+            lastTime = time;
+
+            this.panX += this.panVelocityX * dt;
+            this.panY += this.panVelocityY * dt;
+            this.updateViewBox();
+
+            const decayFactor = Math.pow(decay, dt / 16);
+            this.panVelocityX *= decayFactor;
+            this.panVelocityY *= decayFactor;
+
+            if (Math.hypot(this.panVelocityX, this.panVelocityY) < minVelocity) {
+                this.stopPanInertia(true);
+                return;
+            }
+
+            this.panInertiaFrame = requestAnimationFrame(step);
+        };
+
+        this.panInertiaFrame = requestAnimationFrame(step);
     }
 
 

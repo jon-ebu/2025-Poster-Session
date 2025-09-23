@@ -41,12 +41,12 @@ P007	330	1100	horizontal
 M001	675	940	vertical
 M002	635	940	vertical
 M003	595	940	vertical
-E001	530	410	vertical
+E001	450	410	vertical
 E002	490	410	vertical
-E003	450	410	vertical
-E004	675	410	vertical
+E003	530	410	vertical
+E004	595	410	vertical
 E005	635	410	vertical
-E006	595	410	vertical
+E006	675	410	vertical
 E007	330	360	horizontal
 E008	330	320	horizontal
 E009	330	280	horizontal

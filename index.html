@@ -11,11 +11,18 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            height: 100%;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #F8F6F0;
             color: #333;
-            overflow-x: hidden;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
         }
 
         .header {
@@ -25,6 +32,7 @@
             text-align: center;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             transition: background 0.3s ease;
+            flex-shrink: 0;
         }
 
 
@@ -304,10 +312,12 @@
         /* Main content layout */
         .main-content {
             display: flex;
-            height: calc(100vh - 80px);
+            flex: 1;
+            min-height: 0;
             gap: 20px;
             padding: 20px;
             padding-bottom: 0;
+            box-sizing: border-box;
         }
 
         .map-container {
@@ -317,6 +327,7 @@
             border-radius: 10px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             overflow: hidden;
+            min-height: 0;
         }
 
         .table-container {
@@ -324,20 +335,54 @@
             background: white;
             border-radius: 10px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            overflow: visible;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            min-height: 0;
+            height: 100%;
+            gap: 0;
+            position: relative;
         }
-        
+
+        #filter-form-container {
+            position: sticky;
+            top: 0;
+            z-index: 6;
+            background: inherit;d: inherit;
+        }
+
         .table-responsive {
-            flex: 1;
+            min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
+            max-height: calc(100vh - 220px);
+            max-height: calc(100dvh - 220px);
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Table styles */
         #tsvTable {
+            width: 100%;
+            table-layout: fixed;
             margin-bottom: 0;
+        }
+
+        #tsvTable th,
+        #tsvTable td {
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            white-space: normal;
+        }
+
+        #tsvTable th.responsive-hidden,
+        #tsvTable td.responsive-hidden {
+            display: table-cell;
+        }
+
+        @media (max-width: 768px) {
+            #tsvTable th.responsive-hidden,
+            #tsvTable td.responsive-hidden {
+                display: none;
+            }
         }
 
         #tsvTable thead th {
@@ -355,9 +400,15 @@
 
         .poster-title {
             white-space: normal !important;
-            overflow-wrap: normal !important;
+            overflow-wrap: anywhere !important;
             word-break: normal !important;
-            max-width: 200px;
+            max-width: 100%;
+        }
+
+        @media (min-width: 992px) {
+            .poster-title {
+                max-width: 200px;
+            }
         }
 
         .easel-cell {
@@ -429,17 +480,25 @@
             transition: opacity 0.3s ease;
         }
         
+        .marker-sibling-faded {
+            opacity: 0.45;
+            transition: opacity 0.3s ease;
+        }
+        
         .marker-focused {
             opacity: 1;
+            z-index: 1000 !important;
+            transition: opacity 0.3s ease;
             transform-box: fill-box;
             transform-origin: center;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-            z-index: 1000 !important;
         }
         
         /* Apply scale only to the circle so the <g>'s translate(...) remains intact */
-        .marker-focused circle {
+        circle.marker-focused {
             transform: scale(1.1);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform-box: fill-box;
+            transform-origin: center;
         }
 
         .marker-fade-in {
@@ -455,58 +514,8 @@
             display: none !important;
         }
 
-        /* FooTable mobile styles */
-        .footable-toggle {
-            background-color: #fdb913 !important;
-            color: black !important;
-            border: none !important;
-            border-radius: 3px !important;
-            padding: 4px 8px !important;
-            font-size: 14px !important;
-            font-weight: bold !important;
-            cursor: pointer !important;
-            transition: background-color 0.2s ease !important;
-        }
-
-        .footable-toggle:hover {
-            background-color: #e6a311 !important;
-            color: black !important;
-        }
-        
-        .footable-details {
-            background-color: #f8f9fa !important;
-            border-top: 1px solid #dee2e6 !important;
-            padding: 15px !important;
-            margin-top: 5px !important;
-        }
-        
-        .footable-details-row {
-            background-color: #f8f9fa !important;
-        }
-        
-        .footable-details-row td {
-            border-top: none !important;
-        }
-        
-        /* Style the expandable content */
-        .footable-details .footable-details-cell {
-            padding: 8px 0 !important;
-            border-bottom: 1px solid #e9ecef !important;
-        }
-        
-        .footable-details .footable-details-cell:last-child {
-            border-bottom: none !important;
-        }
-        
-        .footable-details .footable-details-label {
-            font-weight: bold !important;
-            color: #495057 !important;
-            margin-right: 10px !important;
-            min-width: 120px !important;
-            display: inline-block !important;
-        }
-
         /* Mobile table styles */
+
         @media (max-width: 768px) {
             
             /* Mobile search bar styles */
@@ -545,34 +554,33 @@
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
-                height: calc(100vh - 80px);
+                gap: 10px;
                 padding: 10px;
                 padding-bottom: 0;
-                gap: 10px;
             }
 
             .map-container {
-                flex: 1;
-                height: 50%;
+                flex: none;
+                width: 100%;
+                min-height: 220px;
+                height: 40vh;
             }
 
             .table-container {
                 width: 100%;
                 flex: 1;
-                min-height: 50%;
-                max-height: none;
-                overflow: visible;
+                min-height: 0;
+                height: auto;
+                display: flex;
+                flex-direction: column;
             }
             
             .table-responsive {
-                -webkit-overflow-scrolling: touch;
+                height: auto;
+                flex: 1;
+                min-height: 0;
                 overflow-y: auto;
                 overflow-x: hidden;
-                height: 100%;
-                max-height: none;
-                min-height: 0;
-                touch-action: pan-y;
-                overscroll-behavior: contain;
             }
             
 
@@ -701,7 +709,7 @@
                 </form>
             </div>
             <div class="table-responsive">
-                <table id="tsvTable" class="table table-striped table-hover footable" data-paging="false" data-filter="#searchbar" data-sorting="true" data-toggle="false" data-state="true">
+                <table id="tsvTable" class="table table-striped table-hover">
                 </table>
             </div>
         </div>
@@ -709,28 +717,61 @@
 
     <!-- Bootstrap CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FooTable CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/jquery-footable/3.1.6/footable.bootstrap.min.css" rel="stylesheet">
-    
     <script src="assets/js/script.js"></script>
     <script src="assets/js/layout-api.js"></script>
     <!-- jQuery -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
-    <!-- FooTable JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-footable/3.1.6/footable.min.js"></script>
     <script>
         // Table functionality
+        function getEaselColor(easelId) {
+            if (!easelId) {
+                return '#404040';
+            }
+
+            if (window.layout && typeof window.layout.getColorByEaselBoardId === 'function') {
+                return window.layout.getColorByEaselBoardId(easelId);
+            }
+
+            const key = easelId.split('-')[0];
+            switch (key) {
+                case 'B':
+                    return '#008000';
+                case 'BCS':
+                case 'CEP':
+                case 'CHC':
+                case 'CP':
+                case 'CSE':
+                case 'CSEM':
+                case 'CSEP':
+                case 'CSHC':
+                case 'CSM':
+                case 'EP':
+                    return '#FFA500';
+                case 'C':
+                    return '#FF0000';
+                case 'CS':
+                    return '#87CEEB';
+                case 'E':
+                    return '#000000';
+                case 'HC':
+                    return '#FFD700';
+                case 'HSA':
+                    return '#20B2AA';
+                case 'HSAM':
+                    return '#FFA500';
+                case 'M':
+                    return '#FF8C00';
+                case 'P':
+                    return '#800080';
+                default:
+                    return '#404040';
+            }
+        }
+
         function createColorIcon(easelId) {
-            const colors = {
-                'B-1': '#FF6B6B', 'B-2': '#4ECDC4', 'B-3': '#45B7D1', 'B-4': '#96CEB4',
-                'B-5': '#FFEAA7', 'B-6': '#DDA0DD', 'B-7': '#98D8C8', 'B-8': '#F7DC6F',
-                'B-9': '#BB8FCE', 'B-10': '#85C1E9', 'B-11': '#F8C471', 'B-12': '#82E0AA',
-                'B-13': '#F1948A', 'B-14': '#85C1E9', 'B-15': '#D7BDE2', 'B-16': '#A9DFBF',
-                'B-17': '#F9E79F', 'B-18': '#D5A6BD', 'B-19': '#A3E4D7', 'B-20': '#FADBD8'
-            };
-            const color = colors[easelId] || '#95A5A6';
+            const color = getEaselColor(easelId);
             return `<svg width="16" height="16" viewBox="0 0 24 24" style="display: inline-block; margin-right: 8px; vertical-align: middle;">
                       <circle cx="12" cy="12" r="10" fill="${color}"/>
                     </svg>`;
@@ -745,114 +786,67 @@
             table.innerHTML = "";
 
             // Generate headers (excluding Mount ID and Side columns)
-            let headerRow = "<thead><tr>";
-            tableData[0].forEach((header, index) => {
-                // Skip Mount ID (index 5) and Side (index 6) columns
-                if (header === "Mount ID" || header === "Side") {
-                    return;
+            const headers = tableData[0];
+            let headerRow = '<thead><tr>' + headers.map(header => {
+                if (header === 'Mount ID' || header === 'Side') {
+                    return '';
                 }
-                
-                if (header === "Easel Board" || header === "Poster Title" || header === "Student(s)") {
-                    // Keep these columns always visible
-                    if (header === "Poster Title") {
-                        headerRow += `<th class="poster-title">${header}</th>`;
-                    } else {
-                        headerRow += `<th>${header}</th>`;
-                    }
-                } else {
-                    // Hide other columns on mobile (xs breakpoint)
-                    headerRow += `<th data-breakpoints="xs">${header}</th>`;
-                }
-            });
-            headerRow += "</tr></thead>";
+
+                const isPrimary = header === 'Easel Board' || header === 'Poster Title' || header === 'Student(s)';
+                const classes = [
+                    header === 'Poster Title' ? 'poster-title' : '',
+                    isPrimary ? '' : 'responsive-hidden'
+                ].filter(Boolean).join(' ');
+
+                return `<th${classes ? ` class=\"${classes}\"` : ''}>${header}</th>`;
+            }).join('') + '</tr></thead>';
             table.innerHTML += headerRow;
 
-            // Generate rows (excluding Mount ID and Side columns)
-            let bodyRows = "<tbody>";
-            for (let i = 1; i < tableData.length; i++) {
-                const rowData = tableData[i];
-                const easelBoard = rowData[1]; // Easel Board column
-                const posterTitle = rowData[2]; // Poster Title column
-                
-                let row = `<tr data-easel="${easelBoard}" data-title="${posterTitle}">`;
-                rowData.forEach((cell, index) => {
-                    const headerName = tableData[0][index];
-                    
-                    // Skip Mount ID and Side columns
-                    if (headerName === "Mount ID" || headerName === "Side") {
+
+            // Sort by Easel Board column before rendering (ascending)
+            const headerLabels = headers;
+            const bodyRows = tableData.slice(1).sort((a, b) => {
+                const aVal = (a[1] || '').toString();
+                const bVal = (b[1] || '').toString();
+                return aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            let bodyMarkup = '<tbody>' + bodyRows.map(row => {
+                const easelBoard = row[1];
+                const posterTitle = row[2];
+                let rowHtml = `
+                    <tr data-easel="${easelBoard}" data-title="${posterTitle}">`;
+
+                row.forEach((cell, index) => {
+                    const headerName = headerLabels[index];
+                    if (headerName === 'Mount ID' || headerName === 'Side') {
                         return;
                     }
-                    
-                    if (headerName === "Easel Board" || headerName === "Poster Title" || headerName === "Student(s)") {
-                        // Keep these columns always visible
-                        if (headerName === "Poster Title") {
-                            row += `<td class="poster-title">${cell}</td>`;
-                        } else if (headerName === "Easel Board") {
-                            const colorIcon = createColorIcon(cell);
-                            row += `<td class="easel-cell">${colorIcon}${cell}</td>`;
-                        } else {
-                            row += `<td>${cell}</td>`;
-                        }
-                    } else {
-                        // Hide other columns on mobile (xs breakpoint)
-                        row += `<td data-breakpoints="xs">${cell}</td>`;
-                    }
-                });
-                row += "</tr>";
-                bodyRows += row;
-            }
-            bodyRows += "</tbody>";
-            table.innerHTML += bodyRows;
 
-            // Initialize FooTable with mobile breakpoints
-            console.log('FooTable available:', typeof $.fn.footable !== 'undefined');
-            if (typeof $.fn.footable !== 'undefined') {
-                console.log('Initializing FooTable...');
-                $('#tsvTable').footable({
-                    breakpoints: {
-                        xs: 0,
-                        sm: 0,
-                        md: 0,
-                        lg: 0
-                    },
-                    sorting: { enabled: true },
-                    filtering: { enabled: false },
-                    toggle: false,
-                    paging: { enabled: false },
-                    'on': {
-                        'postinit.ft.table': function (e, ft) {
-                            console.log('FooTable initialized successfully');
-                            // Sort by Easel Board column by default
-                            const easelColumnIndex = 1; // Easel Board is the second column
-                            ft.sort(easelColumnIndex, 'asc');
-                            
-                        }
-                    }
-                });
-                
-                // Add footable_toggle event handler for expandable rows
-                $("#tsvTable").on("footable_toggle", function (e) {
-                    console.log('Footable toggle event triggered');
-                    // Get the current toggle element that was clicked
-                    var $currentToggle = $(e.target).closest("tr");
+                    const isPrimary = headerName === 'Easel Board' || headerName === 'Poster Title' || headerName === 'Student(s)';
+                    const cellClasses = [];
 
-                    // Check if the current toggle is active
-                    if ($currentToggle.attr("data-expanded") === "true") {
-                        // Untoggle all other rows except the current one
-                        $("#tsvTable")
-                            .find('tr[data-expanded="true"]')
-                            .not($currentToggle)
-                            .each(function () {
-                                $(this).removeAttr("data-expanded");
-                            });
+                    if (headerName === 'Poster Title') {
+                        cellClasses.push('poster-title');
+                    }
+                    if (!isPrimary) {
+                        cellClasses.push('responsive-hidden');
+                    }
+
+                    if (headerName === 'Easel Board') {
+                        const colorIcon = createColorIcon(cell);
+                        const classes = ['easel-cell'].concat(cellClasses).join(' ').trim();
+                        rowHtml += `<td class="${classes}">${colorIcon}${cell}</td>`;
                     } else {
-                        // Set the current toggle to expanded
-                        $currentToggle.attr("data-expanded", "true");
+                        rowHtml += `<td${cellClasses.length ? ` class="${cellClasses.join(' ')}"` : ''}>${cell}</td>`;
                     }
                 });
-            } else {
-                console.error('FooTable is not available');
-            }
+
+                rowHtml += '</tr>';
+                return rowHtml;
+            }).join('') + '</tbody>';
+
+            table.innerHTML += bodyMarkup;
 
             // Add table event listeners
             addTableEventListeners();
@@ -861,11 +855,6 @@
         function addTableEventListeners() {
             // Add click listeners to table rows for marker highlighting
             $('#tsvTable tbody tr').on('click', function(e) {
-                // Don't trigger if clicking on the toggle button itself
-                if ($(e.target).closest('.footable-toggle').length) {
-                    return;
-                }
-                
                 // Step 1: Click row → get easelBoard from row data
                 console.log('=== STEP 1: Click row → get easelBoard from row data ===');
                 const easelBoard = $(this).data('easel');
@@ -909,6 +898,20 @@
                     }
                 } else {
                     console.log('ERROR: No easelBoard found for this row');
+                }
+            });
+
+            // Clear selection when clicking empty space anywhere else on the page/map
+            $('#posterMap').on('click', function(e) {
+                if ($(e.target).closest('[data-side], .color-marker').length) {
+                    return;
+                }
+
+                $('#tsvTable tbody tr').removeClass('selected');
+                removeMarkerHighlights();
+                restoreMarkerOpacity();
+                if (window.posterMap && window.posterMap.infoPanel) {
+                    window.posterMap.hideInfo();
                 }
             });
         }
@@ -1049,6 +1052,7 @@
             console.log('fadeOtherMarkersOnHover called, total markers:', allMarkers.length);
 
             document.body.classList.add('marker-hover-active');
+            clearSiblingFade();
 
             let fadedCount = 0;
             let focusedCount = 0;
@@ -1068,6 +1072,7 @@
                     if (markerCircle) {
                         markerCircle.classList.add('marker-focused');
                     }
+                    applySiblingFade(markerData);
                     focusedCount++;
                 } else {
                     markerGroup.classList.add('marker-faded');
@@ -1122,11 +1127,6 @@
                 
                 // Update marker visibility based on search
                 updateMarkerVisibility(visibleEasels);
-                
-                // Reset FooTable filtering if search is empty
-                if (searchTerm === '' && typeof $.fn.footable !== 'undefined') {
-                    $('#tsvTable').trigger('footable_clear_filter');
-                }
                 
                 // Restore marker opacity when search is cleared
                 if (searchTerm === '') {
