@@ -575,7 +575,7 @@ class LayoutAPI {
         const offsetA = isVertical ? { x: -width/1.5, y: -height/2.8 } : { x: -width/3, y: -height/2.5 };
         sideAIndicator.setAttribute('cx', offsetA.x);
         sideAIndicator.setAttribute('cy', offsetA.y);
-        sideAIndicator.setAttribute('r', isVertical ? 14 : 12); // Larger circles for vertical mounts
+        sideAIndicator.setAttribute('r', 12); // Same size for all mounts
         sideAIndicator.setAttribute('fill', this.getColorByEaselBoardId(config.sideA.easelBoard));
         sideAIndicator.setAttribute('stroke', 'white');
         sideAIndicator.setAttribute('stroke-width', 2);
@@ -602,7 +602,7 @@ class LayoutAPI {
         const sideATouchArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         sideATouchArea.setAttribute('cx', offsetA.x);
         sideATouchArea.setAttribute('cy', offsetA.y);
-        sideATouchArea.setAttribute('r', isVertical ? 28 : 24); // Larger touch areas for vertical mounts
+        sideATouchArea.setAttribute('r', 24); // Same size touch areas for all mounts
         sideATouchArea.setAttribute('fill', 'transparent');
         sideATouchArea.style.cursor = 'pointer';
         sideATouchArea.setAttribute('data-side', 'A');
@@ -612,7 +612,7 @@ class LayoutAPI {
         const offsetB = isVertical ? { x: width/1.5, y: height/2.8 } : { x: width/3, y: height/2.5 };
         sideBIndicator.setAttribute('cx', offsetB.x);
         sideBIndicator.setAttribute('cy', offsetB.y);
-        sideBIndicator.setAttribute('r', isVertical ? 14 : 12); // Larger circles for vertical mounts
+        sideBIndicator.setAttribute('r', 12); // Same size for all mounts
         sideBIndicator.setAttribute('fill', this.getColorByEaselBoardId(config.sideB.easelBoard));
         sideBIndicator.setAttribute('stroke', 'white');
         sideBIndicator.setAttribute('stroke-width', 2);
@@ -639,7 +639,7 @@ class LayoutAPI {
         const sideBTouchArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         sideBTouchArea.setAttribute('cx', offsetB.x);
         sideBTouchArea.setAttribute('cy', offsetB.y);
-        sideBTouchArea.setAttribute('r', isVertical ? 28 : 24); // Larger touch areas for vertical mounts
+        sideBTouchArea.setAttribute('r', 24); // Same size touch areas for all mounts
         sideBTouchArea.setAttribute('fill', 'transparent');
         sideBTouchArea.style.cursor = 'pointer';
         sideBTouchArea.setAttribute('data-side', 'B');
