@@ -159,7 +159,7 @@
         /* Arrow pointing up (tooltip below marker) */
         .info-panel[style*="--arrow-side: top"]::before {
             left: var(--arrow-position, 50px);
-            top: calc(-1 * var(--arrow-size, 12px));
+            top: calc(-0.7 * var(--arrow-size, 12px)); /* Shorter extension */
             border-bottom-color: white;
             border-top: none;
             transform: translateX(-50%);
@@ -168,7 +168,7 @@
         /* Arrow pointing down (tooltip above marker) */
         .info-panel[style*="--arrow-side: bottom"]::before {
             left: var(--arrow-position, 50px);
-            bottom: calc(-1 * var(--arrow-size, 12px));
+            bottom: calc(-0.7 * var(--arrow-size, 12px)); /* Shorter extension */
             border-top-color: white;
             border-bottom: none;
             transform: translateX(-50%);
@@ -176,7 +176,7 @@
 
         /* Arrow pointing right (tooltip left of marker) */
         .info-panel[style*="--arrow-side: right"]::before {
-            right: calc(-1 * var(--arrow-size, 12px));
+            right: calc(-0.7 * var(--arrow-size, 12px)); /* Shorter extension */
             top: var(--arrow-position, 30px);
             border-left-color: white;
             border-right: none;
@@ -185,7 +185,7 @@
 
         /* Arrow pointing left (tooltip right of marker) */
         .info-panel[style*="--arrow-side: left"]::before {
-            left: calc(-1 * var(--arrow-size, 12px));
+            left: calc(-0.7 * var(--arrow-size, 12px)); /* Shorter extension */
             top: var(--arrow-position, 30px);
             border-right-color: white;
             border-left: none;

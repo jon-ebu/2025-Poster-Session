@@ -3,6 +3,11 @@ B001	900	650	horizontal
 B002	900	620	horizontal
 B003	900	590	horizontal
 B004	900	560	horizontal
+B005	840	520	vertical
+CS001	800	520	vertical
+CS002	760	520	vertical
+CS003	720	520	vertical
+CS004	680	520	vertical
 C001	900	700	horizontal
 C002	900	730	horizontal
 C003	900	760	horizontal
