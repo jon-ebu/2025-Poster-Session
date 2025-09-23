@@ -582,6 +582,7 @@ class LayoutAPI {
         marker.setAttribute('tabindex', '0');
         marker.setAttribute('role', 'button');
         marker.setAttribute('aria-label', `Poster: ${config.poster.title}`);
+        marker.setAttribute('data-easel', config.poster?.easelBoard || '');
         marker.classList.add('color-marker');
 
         // Add text for the marker showing easel ID with dynamic sizing
@@ -961,6 +962,7 @@ class LayoutAPI {
         sideAIndicator.style.cursor = 'pointer';
         sideAIndicator.style.transition = 'r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease-out';
         sideAIndicator.setAttribute('data-side', 'A');
+        sideAIndicator.setAttribute('data-easel', config.sideA?.easelBoard || '');
         sideAIndicator.setAttribute('tabindex', '0');
         sideAIndicator.setAttribute('role', 'button');
         sideAIndicator.setAttribute('aria-label', `Poster A: ${config.sideA.title}`);
@@ -1038,6 +1040,7 @@ class LayoutAPI {
         sideBIndicator.style.cursor = 'pointer';
         sideBIndicator.style.transition = 'r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease-out';
         sideBIndicator.setAttribute('data-side', 'B');
+        sideBIndicator.setAttribute('data-easel', config.sideB?.easelBoard || '');
         sideBIndicator.setAttribute('tabindex', '0');
         sideBIndicator.setAttribute('role', 'button');
         sideBIndicator.setAttribute('aria-label', `Poster B: ${config.sideB.title}`);

@@ -272,8 +272,8 @@ class PosterSessionMap {
     }
 
     updateViewBox() {
-        const baseWidth = 1200;
-        const baseHeight = 1600;
+        const baseWidth = 1150;
+        const baseHeight = 1360;
         const width = baseWidth / this.currentZoom;
         const height = baseHeight / this.currentZoom;
         const x = -this.panX + (baseWidth - width) / 2;

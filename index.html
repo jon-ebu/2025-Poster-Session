@@ -409,9 +409,12 @@
 
         /* Marker highlighting styles */
         .marker-highlight {
-            animation: markerPulse 2s ease-in-out infinite;
-            transform: scale(1.2);
+            /* Removed transform: scale(1.2) to prevent teleporting */
+            /* Removed animation: markerPulse to prevent teleporting */
+            transform-origin: center center;
             z-index: 1000 !important;
+            /* Use a different visual indicator instead of scaling */
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
         }
         
         @keyframes markerPulse {
@@ -428,9 +431,15 @@
         
         .marker-focused {
             opacity: 1;
-            transform: scale(1.1);
+            transform-box: fill-box;
+            transform-origin: center;
             transition: opacity 0.3s ease, transform 0.3s ease;
             z-index: 1000 !important;
+        }
+        
+        /* Apply scale only to the circle so the <g>'s translate(...) remains intact */
+        .marker-focused circle {
+            transform: scale(1.1);
         }
 
         .marker-fade-in {
@@ -857,129 +866,180 @@
                     return;
                 }
                 
+                // Step 1: Click row → get easelBoard from row data
+                console.log('=== STEP 1: Click row → get easelBoard from row data ===');
                 const easelBoard = $(this).data('easel');
-                const posterTitle = $(this).data('title');
+                const isCurrentlySelected = $(this).hasClass('selected');
+                console.log('easelBoard from row data:', easelBoard);
+                console.log('isCurrentlySelected:', isCurrentlySelected);
                 
                 if (easelBoard) {
-                    // Highlight the clicked marker and show its tooltip
-                    highlightMarkerByEasel(easelBoard);
-                    
-                    // Fade other markers
-                    fadeOtherMarkers(easelBoard);
-                    
-                    // Highlight the clicked row
-                    $(this).addClass('selected');
-                    
-                    // Remove highlight from other rows
-                    $('#tsvTable tbody tr').not(this).removeClass('selected');
+                    if (isCurrentlySelected) {
+                        // Step 6: Toggle row → remove selected on the table row
+                        console.log('=== STEP 6: Toggle row → remove selected on the table row ===');
+                        $(this).removeClass('selected');
+                        console.log('Removed selected class from row');
+                        
+                        // Remove marker highlights
+                        removeMarkerHighlights();
+                        
+                        // Restore all marker opacity
+                        restoreMarkerOpacity();
+                        
+                        // Hide info panel
+                        if (window.posterMap && window.posterMap.infoPanel) {
+                            window.posterMap.infoPanel.classList.remove('active');
+                        }
+                    } else {
+                        // Step 2: Find marker → search allMarkers for matching easelBoardId
+                        console.log('=== STEP 2: Find marker → search allMarkers for matching easelBoardId ===');
+                        const highlightedMarker = highlightMarkerByEasel(easelBoard);
+                        
+                        // Step 4: Fade others → add marker-faded to non-selected markers
+                        console.log('=== STEP 4: Fade others → add marker-faded to non-selected markers ===');
+                        fadeOtherMarkers(highlightedMarker);
+                        
+                        // Step 6: Toggle row → add selected on the table row
+                        console.log('=== STEP 6: Toggle row → add selected on the table row ===');
+                        $(this).addClass('selected');
+                        console.log('Added selected class to row');
+                        
+                        // Remove highlight from other rows
+                        $('#tsvTable tbody tr').not(this).removeClass('selected');
+                    }
+                } else {
+                    console.log('ERROR: No easelBoard found for this row');
                 }
             });
         }
 
         // Marker management functions
         function highlightMarkerByEasel(easelBoard) {
-            console.log(`=== MARKER LOOKUP DEBUG ===`);
-            console.log(`Looking for easel: ${easelBoard}`);
-            console.log(`Total markers available: ${allMarkers.length}`);
-            console.log(`All available easel board IDs:`, allMarkers.map(m => m.easelBoardId));
+            console.log(`Function called with easelBoard: ${easelBoard}`);
+            console.log(`allMarkers array length: ${allMarkers.length}`);
             
-            // First remove any existing highlights
             removeMarkerHighlights();
             
-            // Find the matching marker by easel board ID
-            let targetMarker = null;
-            let foundIndex = -1;
+            let targetMarkerData = null;
             
             allMarkers.forEach((markerData, index) => {
-                console.log(`Checking marker ${index}: easelBoardId="${markerData.easelBoardId}", mountId="${markerData.mountId}"`);
                 if (markerData.easelBoardId === easelBoard) {
-                    targetMarker = markerData.marker;
-                    foundIndex = index;
-                    console.log(`✓ MATCH FOUND at index ${index}!`);
+                    targetMarkerData = markerData;
+                    console.log(`✓ MATCH FOUND at index ${index} for easel: ${easelBoard}`);
                 }
             });
             
-            if (foundIndex === -1) {
+            if (!targetMarkerData) {
                 console.log(`✗ NO MATCH FOUND for easel: ${easelBoard}`);
-                console.log(`Available easel board IDs:`, allMarkers.map(m => m.easelBoardId));
-                console.log(`Looking for exact match: "${easelBoard}"`);
-                console.log(`Available IDs that start with "CS":`, allMarkers.filter(m => m.easelBoardId.startsWith('CS')).map(m => m.easelBoardId));
-                return;
+                console.log('Available easel board IDs:', allMarkers.map(m => m.easelBoardId));
+                return null;
             }
             
-            if (targetMarker) {
-                console.log('Marker found, highlighting');
-                console.log('Marker object:', targetMarker);
-                console.log('Available methods:', Object.getOwnPropertyNames(targetMarker));
-                
-                // targetMarker is already the SVG element, not a marker object
-                const markerElement = targetMarker;
-                if (markerElement) {
-                    markerElement.classList.add('marker-highlight');
-                    console.log('Added highlight class to marker element');
-                }
-                
-                // Get position from the transform attribute
-                const transform = markerElement.getAttribute('transform');
-                console.log('Marker transform:', transform);
-                
-                if (transform && window.posterMap && window.posterMap.panTo) {
-                    // Extract x, y from transform="translate(x, y)"
-                    const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
-                    if (match) {
-                        const x = parseFloat(match[1]);
-                        const y = parseFloat(match[2]);
-                        console.log('Panning to position:', x, y);
-                        window.posterMap.panTo(x, y);
-                    }
-                }
-                
-                // Try to trigger a mouseenter event on the marker element to show tooltip
-                console.log('Triggering mouseenter event on marker element');
-                if (markerElement) {
-                    // Create and dispatch a mouseenter event for SVG elements
-                    const mouseEnterEvent = new MouseEvent('mouseenter', {
-                        view: window,
-                        bubbles: true,
-                        cancelable: true
-                    });
-                    markerElement.dispatchEvent(mouseEnterEvent);
-                }
-                
-                // Keep popup open until another row is clicked
-                // Don't auto-close the popup
-            } else {
-                console.error(`Marker not found for easel: ${easelBoard}`);
+            const markerGroup = targetMarkerData.marker;
+            const markerCircle = targetMarkerData.circle || markerGroup;
+            
+            if (!markerGroup || !markerCircle) {
+                console.error(`ERROR: Marker element missing for easel: ${easelBoard}`);
+                return null;
             }
+            
+            console.log('=== STEP 3: Highlight → add marker-highlight to the target marker ===');
+            markerGroup.classList.remove('marker-faded');
+            markerGroup.querySelectorAll('circle').forEach(circle => {
+                circle.classList.remove('marker-focused');
+            });
+            
+            markerCircle.classList.add('marker-highlight');
+            markerCircle.classList.add('marker-focused');
+            console.log('✓ Highlight classes applied to marker circle');
+            console.log('Marker circle classes:', markerCircle.classList.toString());
+            
+            console.log('=== STEP 5: Show tooltip → dispatch mouseenter on the target marker ===');
+            const mouseEnterEvent = new MouseEvent('mouseenter', {
+                view: window,
+                bubbles: true,
+                cancelable: true
+            });
+            markerCircle.dispatchEvent(mouseEnterEvent);
+            console.log('✓ Mouseenter event dispatched successfully');
+            
+            window.currentHighlightedMarker = targetMarkerData;
+            return targetMarkerData;
         }
 
         // Remove all marker highlights
         function removeMarkerHighlights() {
             document.querySelectorAll('.marker-highlight').forEach(element => {
                 element.classList.remove('marker-highlight');
+                element.classList.remove('marker-focused');
             });
+            window.currentHighlightedMarker = null;
         }
         
         // Fade other markers when one is selected
-        function fadeOtherMarkers(selectedEasel) {
-            allMarkers.forEach(markerData => {
-                if (markerData.easelBoardId !== selectedEasel) {
-                    const markerElement = markerData.marker; // marker is already the SVG element
-                    
-                    if (markerElement) {
-                        markerElement.classList.add('marker-faded');
+        function fadeOtherMarkers(selectedMarker) {
+            if (!selectedMarker) {
+                console.log('No selected marker provided — restoring opacity.');
+                restoreMarkerOpacity();
+                return;
+            }
+
+            const selectedMountId = selectedMarker?.mountId || null;
+
+            console.log('selectedMarker:', selectedMarker);
+            console.log('allMarkers length:', allMarkers.length);
+
+            const processedGroups = new Set();
+            let fadedCount = 0;
+
+            allMarkers.forEach((markerData, index) => {
+                const markerGroup = markerData.marker;
+                const markerCircle = markerData.circle || markerGroup;
+
+                if (!markerGroup) {
+                    console.log(`ERROR: markerGroup is null for marker ${index}`);
+                    return;
+                }
+
+                if (markerData.mountId === selectedMountId) {
+                    markerGroup.classList.remove('marker-faded');
+                    if (markerCircle) {
+                        markerCircle.classList.remove('marker-faded');
                     }
+                    return;
+                }
+
+                if (!processedGroups.has(markerGroup)) {
+                    console.log(`Adding marker-faded class to marker group ${index} (${markerData.easelBoardId})`);
+                    markerGroup.classList.add('marker-faded');
+                    processedGroups.add(markerGroup);
+                    fadedCount++;
+                }
+
+                if (markerCircle) {
+                    markerCircle.classList.remove('marker-focused');
                 }
             });
+
+            console.log(`✓ Faded ${fadedCount} marker groups successfully`);
         }
         
         // Restore all marker opacity
         function restoreMarkerOpacity() {
+            const processedGroups = new Set();
+
             allMarkers.forEach(markerData => {
-                const markerElement = markerData.marker; // marker is already the SVG element
-                
-                if (markerElement) {
-                    markerElement.classList.remove('marker-faded');
+                const markerGroup = markerData.marker;
+                const markerCircle = markerData.circle || markerGroup;
+
+                if (markerGroup && !processedGroups.has(markerGroup)) {
+                    markerGroup.classList.remove('marker-faded');
+                    processedGroups.add(markerGroup);
+                }
+
+                if (markerCircle) {
+                    markerCircle.classList.remove('marker-focused');
+                    markerCircle.classList.remove('marker-highlight');
                 }
             });
         }
@@ -987,25 +1047,37 @@
         // Fade out all markers except the hovered one (for hover effects)
         function fadeOtherMarkersOnHover(hoveredMarker) {
             console.log('fadeOtherMarkersOnHover called, total markers:', allMarkers.length);
-            
-            // Add a class to body to indicate hover state
+
             document.body.classList.add('marker-hover-active');
-            
+
             let fadedCount = 0;
             let focusedCount = 0;
-            
+
             allMarkers.forEach(markerData => {
-                const marker = markerData.marker;
-                const markerElement = marker.getElement();
-                if (markerElement && marker !== hoveredMarker) {
-                    markerElement.classList.add('marker-faded');
-                    fadedCount++;
-                } else if (markerElement && marker === hoveredMarker) {
-                    markerElement.classList.add('marker-focused');
+                const markerGroup = markerData.marker;
+                const markerCircle = markerData.circle || markerGroup;
+
+                if (!markerGroup) {
+                    return;
+                }
+
+                const isHovered = hoveredMarker && (markerData === hoveredMarker || markerGroup === hoveredMarker || markerCircle === hoveredMarker);
+
+                if (isHovered) {
+                    markerGroup.classList.remove('marker-faded');
+                    if (markerCircle) {
+                        markerCircle.classList.add('marker-focused');
+                    }
                     focusedCount++;
+                } else {
+                    markerGroup.classList.add('marker-faded');
+                    if (markerCircle) {
+                        markerCircle.classList.remove('marker-focused');
+                    }
+                    fadedCount++;
                 }
             });
-            
+
             console.log(`Applied marker-faded to ${fadedCount} markers, marker-focused to ${focusedCount} markers`);
         }
 
@@ -1087,21 +1159,18 @@
 
         function updateMarkerVisibility(visibleEasels) {
             allMarkers.forEach(markerData => {
-                const marker = markerData.marker;
-                const markerElement = marker.getElement();
-                
+                const markerGroup = markerData.marker;
+
+                if (!markerGroup) {
+                    return;
+                }
+
                 if (visibleEasels.has(markerData.easelBoardId)) {
-                    // Show marker
-                    if (markerElement) {
-                        markerElement.style.display = '';
-                        markerElement.classList.remove('marker-hidden');
-                    }
+                    markerGroup.style.display = '';
+                    markerGroup.classList.remove('marker-hidden');
                 } else {
-                    // Hide marker
-                    if (markerElement) {
-                        markerElement.style.display = 'none';
-                        markerElement.classList.add('marker-hidden');
-                    }
+                    markerGroup.style.display = 'none';
+                    markerGroup.classList.add('marker-hidden');
                 }
             });
         }
@@ -1278,97 +1347,87 @@
                 });
 
                 // Register markers for table interaction
-                console.log(`=== MARKER REGISTRATION DEBUG ===`);
-                console.log('window.layout:', window.layout);
-                console.log('window.layout.layoutElements:', window.layout?.layoutElements);
-                console.log('layoutElements size:', window.layout?.layoutElements?.size);
-                
-                if (window.layout && window.layout.layoutElements) {
-                    console.log(`Layout elements available: ${window.layout.layoutElements.size}`);
-                    
-                    allMarkers = [];
-                    window.layout.layoutElements.forEach((element, id) => {
-                        console.log(`Processing element: ${id}, type: ${element.type}`);
-                        
-                        if (element.type === 'poster-mount' && element.element) {
-                            // Get the mount ID from the element ID
-                            const mountId = id;
-                            console.log(`  Mount ID: ${mountId}`);
-                            
-                            // Get the easel board ID from the poster data
-                            // Check both sideA and sideB for easel board IDs
-                            const easelBoardIds = [];
-                            console.log(`  SideA data:`, element.sideA);
-                            console.log(`  SideB data:`, element.sideB);
-                            
-                            if (element.sideA?.easelBoard) {
-                                easelBoardIds.push(element.sideA.easelBoard);
-                                console.log(`  Found sideA easelBoard: ${element.sideA.easelBoard}`);
-                            }
-                            if (element.sideB?.easelBoard) {
-                                easelBoardIds.push(element.sideB.easelBoard);
-                                console.log(`  Found sideB easelBoard: ${element.sideB.easelBoard}`);
-                            }
-                            
-                            console.log(`  All easel board IDs for this mount:`, easelBoardIds);
-                            
-                            // Create a marker entry for each easel board ID
-                            easelBoardIds.forEach(easelBoardId => {
-                                allMarkers.push({
-                                    marker: element.element,
-                                    easelBoardId: easelBoardId,
-                                    mountId: mountId
-                                });
-                                console.log(`  Registered marker: easelBoardId=${easelBoardId}, mountId=${mountId}`);
-                            });
-                        }
-                    });
-                    console.log(`=== REGISTRATION COMPLETE ===`);
-                    console.log(`Registered ${allMarkers.length} markers for table interaction`);
-                    console.log('Sample marker data:', allMarkers[0]);
-                    console.log('All easel board IDs:', allMarkers.map(m => m.easelBoardId));
-                } else {
-                    console.log('Layout or layoutElements not available');
-                    console.log('window.layout:', window.layout);
-                    if (window.layout) {
-                        console.log('window.layout.layoutElements:', window.layout.layoutElements);
+                function rebuildMarkerRegistry(contextLabel = 'initial') {
+                    console.log(`=== MARKER REGISTRATION (${contextLabel}) ===`);
+                    if (!window.layout || !window.layout.layoutElements || window.layout.layoutElements.size === 0) {
+                        console.log('Layout elements unavailable; skipping marker registration');
+                        return false;
                     }
-                }
-                
-                // Try to register markers again after a delay
-                setTimeout(() => {
-                    console.log(`=== DELAYED MARKER REGISTRATION ===`);
-                    if (window.layout && window.layout.layoutElements && window.layout.layoutElements.size > 0) {
-                        console.log('Layout elements now available, re-registering markers...');
-                        // Re-run the registration logic here
-                        allMarkers = [];
-                        window.layout.layoutElements.forEach((element, id) => {
-                            if (element.type === 'poster-mount' && element.element) {
-                                const mountId = id;
-                                const easelBoardIds = [];
-                                if (element.sideA?.easelBoard) {
-                                    easelBoardIds.push(element.sideA.easelBoard);
-                                }
-                                if (element.sideB?.easelBoard) {
-                                    easelBoardIds.push(element.sideB.easelBoard);
-                                }
-                                easelBoardIds.forEach(easelBoardId => {
-                                    allMarkers.push({
-                                        marker: element.element,
-                                        easelBoardId: easelBoardId,
-                                        mountId: mountId
+
+                    const nextMarkers = [];
+
+                    window.layout.layoutElements.forEach((element, id) => {
+                        if (!element.element) {
+                            return;
+                        }
+
+                        if (element.type === 'poster-mount') {
+                            const markerGroup = element.element;
+
+                            if (element.sideA?.easelBoard && element.sideA.easelBoard !== 'Unassigned') {
+                                const sideACircle = markerGroup.querySelector('circle[data-side="A"][data-easel]') || markerGroup.querySelector('circle[data-side="A"]');
+                                if (sideACircle) {
+                                    nextMarkers.push({
+                                        marker: markerGroup,
+                                        circle: sideACircle,
+                                        easelBoardId: element.sideA.easelBoard,
+                                        mountId: id,
+                                        side: 'A'
                                     });
-                                });
+                                }
                             }
-                        });
-                        console.log(`Delayed registration complete: ${allMarkers.length} markers`);
+
+                            if (element.sideB?.easelBoard && element.sideB.easelBoard !== 'Unassigned') {
+                                const sideBCircle = markerGroup.querySelector('circle[data-side="B"][data-easel]') || markerGroup.querySelector('circle[data-side="B"]');
+                                if (sideBCircle) {
+                                    nextMarkers.push({
+                                        marker: markerGroup,
+                                        circle: sideBCircle,
+                                        easelBoardId: element.sideB.easelBoard,
+                                        mountId: id,
+                                        side: 'B'
+                                    });
+                                }
+                            }
+
+                        } else if (element.type === 'lone-marker') {
+                            if (element.poster?.easelBoard) {
+                                const markerGroup = element.element;
+                                const loneCircle = markerGroup.querySelector('circle[data-easel]') || markerGroup.querySelector('circle');
+                                if (loneCircle) {
+                                    nextMarkers.push({
+                                        marker: markerGroup,
+                                        circle: loneCircle,
+                                        easelBoardId: element.poster.easelBoard,
+                                        mountId: id,
+                                        side: null
+                                    });
+                                }
+                            }
+
+                        }
+
+                    });
+
+                    allMarkers = nextMarkers;
+                    console.log(`Registered ${allMarkers.length} markers for table interaction`);
+                    if (allMarkers.length > 0) {
+                        console.log('Sample marker data:', allMarkers[0]);
                         console.log('All easel board IDs:', allMarkers.map(m => m.easelBoardId));
-                    } else {
+                    }
+
+                    return allMarkers.length > 0;
+                }
+
+                rebuildMarkerRegistry('initial');
+
+                // Try to register markers again after a delay in case the layout is still loading
+                setTimeout(() => {
+                    if (!rebuildMarkerRegistry('delayed')) {
                         console.log('Layout elements still not available after delay');
                     }
                 }, 2000);
-                
-                
+
                 // Make layout API available globally for easy testing
                 window.layout = layout;
                 console.log('Layout API initialized. Use window.layout to add elements.');
