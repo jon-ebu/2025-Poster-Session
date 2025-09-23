@@ -29,9 +29,6 @@ class LayoutAPI {
             case "BCS":
                 color = "#FFA500"; // orange (BCS-1, BCS-2, BCS-3)
                 break;
-            case "BHC":
-                color = "#FFA500"; // orange (Biology, Hixon Center - follows Biology color)
-                break;
             case "C":
                 color = "#FF0000"; // red (C-1 through C-17)
                 break;
@@ -72,35 +69,16 @@ class LayoutAPI {
                 color = "#FFD700"; // gold (HC-1)
                 break;
             case "HSA":
-                color = "#008080"; // teal (HSA-1)
+                color = "#20B2AA"; // light teal (HSA-1)
                 break;
             case "HSAM":
                 color = "#FFA500"; // orange (HSAM-1)
                 break;
             case "M":
-                color = "#FF8C00"; // deep orange (M-1 through M-5)
+                color = "#FF8C00"; // dark orange (M-1 through M-5)
                 break;
             case "P":
                 color = "#800080"; // purple (P-1 through P-13)
-                break;
-            // Legacy cases for backward compatibility
-            case "BC":
-                color = "#56B4E9"; // light blue (legacy)
-                break;
-            case "BE":
-                color = "#F0E442"; // light yellow (legacy)
-                break;
-            case "CSN":
-                color = "#009E73"; // teal (legacy)
-                break;
-            case "EM":
-                color = "#FF4500"; // orange-red (legacy)
-                break;
-            case "O":
-                color = "#CC79A7"; // pink (legacy)
-                break;
-            case "SSEF":
-                color = "#E69F00"; // yellow-orange (legacy)
                 break;
             default:
                 color = "#404040"; // gray for unrecognized easelBoardId
@@ -129,6 +107,23 @@ class LayoutAPI {
         } else {
             return '4';  // Smallest for very long text
         }
+    }
+
+    /**
+     * Get appropriate text color based on background color for better contrast
+     * @param {string} backgroundColor - The background color hex value
+     * @returns {string} Text color (white or black)
+     */
+    getTextColorForBackground(backgroundColor) {
+        // Light/bright colors that need black text for better contrast
+        const lightColors = ['#87CEEB', '#20B2AA', '#FFA500', '#FFD700']; // Light blue, light teal, bright orange, gold
+        
+        if (lightColors.includes(backgroundColor)) {
+            return 'black';
+        }
+        
+        // Default to white for all other colors
+        return 'white';
     }
 
     /**
@@ -602,10 +597,35 @@ class LayoutAPI {
         sideAIndicator.setAttribute('stroke', 'white');
         sideAIndicator.setAttribute('stroke-width', 2);
         sideAIndicator.style.cursor = 'pointer';
+        sideAIndicator.style.transition = 'r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease-out';
         sideAIndicator.setAttribute('data-side', 'A');
         sideAIndicator.setAttribute('tabindex', '0');
         sideAIndicator.setAttribute('role', 'button');
         sideAIndicator.setAttribute('aria-label', `Poster A: ${config.sideA.title}`);
+        sideAIndicator.classList.add('color-marker');
+        
+        // Add smooth balloon hover effect with info display
+        sideAIndicator.addEventListener('mouseenter', () => {
+            sideAIndicator.setAttribute('r', '14'); // Increase radius from 12 to 14
+            sideAIndicator.style.filter = 'drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
+            
+            // Scale up the text font size
+            const originalFontSize = parseFloat(sideAText.getAttribute('data-original-font-size'));
+            sideAText.setAttribute('font-size', originalFontSize * 1.2); // 20% larger
+            
+            showPosterInfo('A');
+        });
+        
+        sideAIndicator.addEventListener('mouseleave', () => {
+            sideAIndicator.setAttribute('r', '12'); // Reset radius back to 12
+            sideAIndicator.style.filter = 'none';
+            
+            // Reset text font size
+            const originalFontSize = sideAText.getAttribute('data-original-font-size');
+            sideAText.setAttribute('font-size', originalFontSize);
+            
+            hidePosterInfo();
+        });
 
         // Add text for side A showing easel ID with dynamic sizing
         const sideAText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -620,16 +640,23 @@ class LayoutAPI {
         const sideAFontSize = this.calculateFontSize(sideAEaselBoard);
         sideAText.setAttribute('font-size', sideAFontSize);
         
+        // Store original font size for hover effect
+        sideAText.setAttribute('data-original-font-size', sideAFontSize);
+        
         sideAText.setAttribute('font-weight', 'bold');
-        sideAText.setAttribute('fill', 'white');
+        // Use dynamic text color based on background color for better contrast
+        const sideABackgroundColor = this.getColorByEaselBoardId(config.sideA.easelBoard);
+        const sideATextColor = this.getTextColorForBackground(sideABackgroundColor);
+        sideAText.setAttribute('fill', sideATextColor);
         sideAText.setAttribute('pointer-events', 'none'); // Make text non-interactive to prevent hover conflicts
+        sideAText.style.transition = 'font-size 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
         sideAText.textContent = sideAEaselBoard;
         
         // Add invisible touch area for easier mobile interaction
         const sideATouchArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         sideATouchArea.setAttribute('cx', offsetA.x);
         sideATouchArea.setAttribute('cy', offsetA.y);
-        sideATouchArea.setAttribute('r', 24); // Same size touch areas for all mounts
+        sideATouchArea.setAttribute('r', 26); // Slightly larger to accommodate expanded circle
         sideATouchArea.setAttribute('fill', 'transparent');
         sideATouchArea.style.cursor = 'pointer';
         sideATouchArea.setAttribute('data-side', 'A');
@@ -644,10 +671,35 @@ class LayoutAPI {
         sideBIndicator.setAttribute('stroke', 'white');
         sideBIndicator.setAttribute('stroke-width', 2);
         sideBIndicator.style.cursor = 'pointer';
+        sideBIndicator.style.transition = 'r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease-out';
         sideBIndicator.setAttribute('data-side', 'B');
         sideBIndicator.setAttribute('tabindex', '0');
         sideBIndicator.setAttribute('role', 'button');
         sideBIndicator.setAttribute('aria-label', `Poster B: ${config.sideB.title}`);
+        sideBIndicator.classList.add('color-marker');
+        
+        // Add smooth balloon hover effect with info display
+        sideBIndicator.addEventListener('mouseenter', () => {
+            sideBIndicator.setAttribute('r', '14'); // Increase radius from 12 to 14
+            sideBIndicator.style.filter = 'drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
+            
+            // Scale up the text font size
+            const originalFontSize = parseFloat(sideBText.getAttribute('data-original-font-size'));
+            sideBText.setAttribute('font-size', originalFontSize * 1.2); // 20% larger
+            
+            showPosterInfo('B');
+        });
+        
+        sideBIndicator.addEventListener('mouseleave', () => {
+            sideBIndicator.setAttribute('r', '12'); // Reset radius back to 12
+            sideBIndicator.style.filter = 'none';
+            
+            // Reset text font size
+            const originalFontSize = sideBText.getAttribute('data-original-font-size');
+            sideBText.setAttribute('font-size', originalFontSize);
+            
+            hidePosterInfo();
+        });
 
         // Add text for side B showing easel ID with dynamic sizing
         const sideBText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -662,16 +714,23 @@ class LayoutAPI {
         const sideBFontSize = this.calculateFontSize(sideBEaselBoard);
         sideBText.setAttribute('font-size', sideBFontSize);
         
+        // Store original font size for hover effect
+        sideBText.setAttribute('data-original-font-size', sideBFontSize);
+        
         sideBText.setAttribute('font-weight', 'bold');
-        sideBText.setAttribute('fill', 'white');
+        // Use dynamic text color based on background color for better contrast
+        const sideBBackgroundColor = this.getColorByEaselBoardId(config.sideB.easelBoard);
+        const sideBTextColor = this.getTextColorForBackground(sideBBackgroundColor);
+        sideBText.setAttribute('fill', sideBTextColor);
         sideBText.setAttribute('pointer-events', 'none'); // Make text non-interactive to prevent hover conflicts
+        sideBText.style.transition = 'font-size 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
         sideBText.textContent = sideBEaselBoard;
         
         // Add invisible touch area for easier mobile interaction
         const sideBTouchArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         sideBTouchArea.setAttribute('cx', offsetB.x);
         sideBTouchArea.setAttribute('cy', offsetB.y);
-        sideBTouchArea.setAttribute('r', 24); // Same size touch areas for all mounts
+        sideBTouchArea.setAttribute('r', 26); // Slightly larger to accommodate expanded circle
         sideBTouchArea.setAttribute('fill', 'transparent');
         sideBTouchArea.style.cursor = 'pointer';
         sideBTouchArea.setAttribute('data-side', 'B');
@@ -714,12 +773,6 @@ class LayoutAPI {
         }
         
         const showPosterInfo = (side) => {
-            // Check if mouse is moving too fast - if so, don't show tooltip
-            const velocityThreshold = 0.8; // pixels per millisecond (adjust as needed)
-            if (window.mouseVelocityTracker && window.mouseVelocityTracker.velocity > velocityThreshold) {
-                return; // Skip showing tooltip if moving too fast
-            }
-            
             // Always cancel any pending hide timer first
             if (window.posterInfoTimer) {
                 clearTimeout(window.posterInfoTimer);
@@ -729,12 +782,13 @@ class LayoutAPI {
             const poster = side === 'A' ? config.sideA : config.sideB;
             const markerElement = side === 'A' ? sideAIndicator : sideBIndicator;
             
-            // Add a small delay to ensure user has intentionally hovered
-            const showDelay = 150; // 150ms delay
+            // Reduced delay for faster switching between markers
+            const showDelay = 50; // Reduced from 150ms to 50ms
             window.posterInfoTimer = setTimeout(() => {
-                // Double-check velocity hasn't increased during the delay
+                // Only check velocity if mouse is moving very fast (increased threshold)
+                const velocityThreshold = 2.0; // Increased from 0.8 to 2.0
                 if (window.mouseVelocityTracker && window.mouseVelocityTracker.velocity > velocityThreshold) {
-                    return; // Still moving too fast, skip
+                    return; // Only skip if moving extremely fast
                 }
                 
                 if (window.posterMap) {
@@ -906,23 +960,10 @@ class LayoutAPI {
                     window.posterMap.infoPanel.classList.remove('active');
                 }
                 window.posterInfoTimer = null;
-            }, 200); // Reduced delay for faster response
+            }, 100); // Reduced delay from 200ms to 100ms for faster response
         };
 
-        // Simple circle hover only - use actual marker position
-        sideAIndicator.addEventListener('mouseenter', () => {
-            showPosterInfo('A');
-        });
-        sideAIndicator.addEventListener('mouseleave', () => {
-            hidePosterInfo();
-        });
-
-        sideBIndicator.addEventListener('mouseenter', () => {
-            showPosterInfo('B');
-        });
-        sideBIndicator.addEventListener('mouseleave', () => {
-            hidePosterInfo();
-        });
+        // Combined hover effects for balloon animation and info display
 
         // Touch events
         sideAIndicator.addEventListener('touchstart', (e) => {

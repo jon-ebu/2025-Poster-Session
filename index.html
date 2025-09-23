@@ -119,13 +119,23 @@
         .marker:hover {
             fill: #f4511e;
             transform-origin: center;
-            animation: pulse 1s infinite;
+            transform: scale(1.15);
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
+        /* Color marker base styles - hover effects handled in JavaScript */
+        .color-marker {
+            transform-origin: center;
+            outline: none;
+        }
+
+        /* Remove focus outline from SVG circles */
+        .color-marker:focus {
+            outline: none;
+        }
+
+        /* Remove focus outlines from all SVG elements */
+        svg *:focus {
+            outline: none;
         }
 
         .info-panel {
@@ -314,7 +324,6 @@
             .info-panel {
                 --arrow-size: 9px; /* Smaller arrows on mobile */
             }
-            }
             
             .controls {
                 top: 10px;
@@ -424,8 +433,8 @@
                 // Add Strauss Plaza positioned at specified coordinates, centered relative to buildings
                 layout.addSVG({
                     id: 'strauss-plaza',
-                    svgFile: 'assets/svg/Strauss Plaza.svg',
-                    position: { x: 420, y: 566 }, // Centered vertically (+35px)
+                    svgFile: 'assets/svg/Strauss Plaza (2).svg',
+                    position: { x: 280, y: 566 }, // Moved further left by 70px more
                     style: { fill: 'white' }, // White for plaza
                     interactive: false
                 });
