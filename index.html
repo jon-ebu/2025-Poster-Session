@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2025 Poster Session - Interactive Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .map-container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 120px);
+            background: white;
+            border-radius: 10px;
+            margin: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .svg-map {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        .svg-map:active {
+            cursor: grabbing;
+        }
+
+        .poster-area {
+            fill: #e3f2fd;
+            stroke: #1976d2;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .poster-area:hover {
+            fill: #bbdefb;
+            stroke-width: 3;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+        }
+
+        .poster-area:focus {
+            outline: none;
+            fill: #90caf9;
+            stroke: #0d47a1;
+            stroke-width: 4;
+        }
+
+        .poster-area.selected {
+            fill: #4fc3f7;
+            stroke: #0288d1;
+            stroke-width: 4;
+        }
+
+        .area-label {
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            fill: #1565c0;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .marker {
+            fill: #ff5722;
+            stroke: white;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .marker:hover {
+            fill: #f4511e;
+            transform-origin: center;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-width: 90%;
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .info-panel.active {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+
+        .info-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1976d2;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-description {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: white;
+            border: none;
+            border-radius: 8px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: #f5f5f5;
+            transform: scale(1.05);
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .area-label {
+                font-size: 10px;
+            }
+            
+            .info-panel {
+                bottom: 10px;
+                max-width: 95%;
+                padding: 0.8rem;
+            }
+            
+            .controls {
+                top: 10px;
+                right: 10px;
+            }
+            
+            .control-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .map-container {
+                margin: 5px;
+                border-radius: 5px;
+            }
+            
+            .area-label {
+                font-size: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>2025 Poster Session</h1>
+        <p>Interactive Map - Tap poster areas to explore</p>
+    </div>
+
+    <div class="map-container">
+        <svg class="svg-map" viewBox="0 0 1200 1000" id="posterMap">
+            <!-- Background -->
+            <rect width="1200" height="1000" fill="#fafafa" stroke="#e0e0e0"/>
+            
+            <!-- Buildings will be added via Layout API -->
+            
+            <!-- Poster areas will be dynamically generated -->
+            <g id="poster-areas"></g>
+            
+            <!-- Markers will be dynamically generated -->
+            <g id="markers"></g>
+        </svg>
+
+        <div class="controls">
+            <button class="control-btn" id="zoomIn" title="Zoom In">+</button>
+            <button class="control-btn" id="zoomOut" title="Zoom Out">−</button>
+            <button class="control-btn" id="resetView" title="Reset View">⌂</button>
+        </div>
+
+        <div class="info-panel" id="infoPanel">
+            <div class="info-title" id="infoTitle">Select a poster area</div>
+            <div class="info-description" id="infoDescription">Click on any poster area to view details</div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="layout-api.js"></script>
+    <script>
+        // Layout API Usage
+        function initializeLayout() {
+            // Wait for both posterMap instance and PosterSessionMap class
+            if (!window.posterMap || !window.PosterSessionMap || !window.LayoutAPI) {
+                console.log('Waiting for dependencies to load...');
+                setTimeout(initializeLayout, 100);
+                return;
+            }
+            
+            console.log('All dependencies loaded - initializing Layout API');
+            
+            // Ensure the Layout API method is available
+            if (!window.posterMap.initializeLayoutAPI) {
+                console.log('Adding initializeLayoutAPI method to posterMap instance');
+                window.PosterSessionMap.prototype.initializeLayoutAPI = function() {
+                    this.layout = new LayoutAPI(this);
+                    return this.layout;
+                };
+            }
+            
+            // Initialize the layout API
+            const layout = window.posterMap.initializeLayoutAPI();
+            
+            // Add Parsons building using Layout API
+            layout.addSVG({
+                id: 'parsons-building',
+                svgFile: 'Parsons.svg',
+                position: { x: 250, y: 50 },
+                style: { fill: '#D9D9D9' },
+                interactive: true,
+                onClick: () => {
+                    window.posterMap.infoTitle.textContent = 'Parsons Hall';
+                    window.posterMap.infoDescription.innerHTML = `
+                        <p><strong>Building:</strong> Parsons Hall - Main venue</p>
+                        <p><strong>Features:</strong> Central courtyard with poster display areas</p>
+                        <p><strong>Capacity:</strong> Primary conference building</p>
+                    `;
+                    window.posterMap.infoPanel.classList.add('active');
+                }
+            });
+
+            // Place Garden Boxes in the central courtyard of Parsons building
+            layout.addSVG({
+                id: 'garden-boxes',
+                svgFile: 'Garden Boxes.svg',
+                position: { x: 520, y: 240 }, // Moved right for better centering in courtyard
+                transform: { scale: 0.6 }, // Larger to be more visible and proportional
+                style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 1 }, // Green garden colors
+                    interactive: true,
+                    onClick: () => {
+                        console.log('Garden boxes clicked!');
+                        window.posterMap.infoTitle.textContent = 'Garden Courtyard';
+                        window.posterMap.infoDescription.innerHTML = `
+                            <p><strong>Location:</strong> Central courtyard of Parsons Hall</p>
+                            <p><strong>Features:</strong> Outdoor poster display area with garden setting</p>
+                            <p><strong>Capacity:</strong> Perfect for informal discussions and networking</p>
+                        `;
+                        window.posterMap.infoPanel.classList.add('active');
+                    }
+                }).then(() => {
+                    console.log('Garden Boxes SVG loaded successfully');
+                }).catch(error => {
+                    console.error('Error loading Garden Boxes:', error);
+                    
+                    // Fallback: Create the garden boxes as simple shapes
+                    console.log('Creating fallback garden boxes...');
+                    
+                    // Left garden box (from SVG path)
+                    layout.addShape({
+                        id: 'garden-left',
+                        type: 'path',
+                        geometry: { d: 'M86,0 L86,32 L32,32 L32,183 L86,183 L86,215 L0,215 L0,0 Z' },
+                        position: { x: 400, y: 300 },
+                        style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 2 }
+                    });
+                    
+                    // Right garden box  
+                    layout.addShape({
+                        id: 'garden-right',
+                        type: 'path',
+                        geometry: { d: 'M176,215 L176,183 L230,183 L230,32 L176,32 L176,0 L262,0 L262,215 Z' },
+                        position: { x: 400, y: 300 },
+                        style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 2 }
+                    });
+                    
+                    // Center square
+                    layout.addShape({
+                        id: 'garden-center',
+                        type: 'rect',
+                        geometry: { width: 56, height: 56 },
+                        position: { x: 503, y: 379 }, // 400 + 103, 300 + 79
+                        style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 2 }
+                    });
+                });
+                
+                // Add Jacobs Keck building (completely vertically flipped)
+                layout.addSVG({
+                    id: 'jacobs-keck-building',
+                    svgFile: 'Parsons.svg',
+                    position: { x: 250, y: 1220 }, // Positioned so the flipped building appears correctly
+                    transform: { scale: 1, scaleY: -1 }, // Complete vertical flip
+                    style: { fill: '#D9D9D9' },
+                    interactive: true,
+                    onClick: () => {
+                        window.posterMap.infoTitle.textContent = 'Jacobs Keck Hall';
+                        window.posterMap.infoDescription.innerHTML = `
+                            <p><strong>Building:</strong> Jacobs Keck Hall - Secondary venue</p>
+                            <p><strong>Features:</strong> Central courtyard with additional poster displays</p>
+                            <p><strong>Capacity:</strong> Additional conference space</p>
+                        `;
+                        window.posterMap.infoPanel.classList.add('active');
+                    }
+                });
+
+                // Add Garden Boxes for Jacobs Keck (same distance from building as Parsons)
+                layout.addSVG({
+                    id: 'jacobs-keck-garden-boxes',
+                    svgFile: 'Garden Boxes.svg',
+                    position: { x: 520, y: 1030 }, // Same distance into courtyard as Parsons (190px from building edge)
+                    transform: { scale: 0.6, scaleY: -1 }, // Same size as Parsons, but flipped
+                    style: { fill: '#4CAF50', stroke: '#2E7D32', strokeWidth: 1 },
+                    interactive: true,
+                    onClick: () => {
+                        console.log('Jacobs Keck garden boxes clicked!');
+                        window.posterMap.infoTitle.textContent = 'Jacobs Keck Courtyard';
+                        window.posterMap.infoDescription.innerHTML = `
+                            <p><strong>Location:</strong> Central courtyard of Jacobs Keck Hall</p>
+                            <p><strong>Features:</strong> Additional outdoor poster display area</p>
+                            <p><strong>Capacity:</strong> Extended networking and discussion space</p>
+                        `;
+                        window.posterMap.infoPanel.classList.add('active');
+                    }
+                });
+                
+                // Make layout API available globally for easy testing
+                window.layout = layout;
+                console.log('Layout API initialized. Use window.layout to add elements.');
+        }
+        
+        // Start initialization when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeLayout();
+        });
+    </script>
+</body>
+</html>
