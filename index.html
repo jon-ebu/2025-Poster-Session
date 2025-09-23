@@ -137,34 +137,6 @@
             pointer-events: auto;
         }
 
-        .info-close-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 32px;
-            height: 32px;
-            border: none;
-            border-radius: 50%;
-            background: #f44336;
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            z-index: 10;
-        }
-
-        .info-close-btn:hover {
-            background: #d32f2f;
-            transform: scale(1.1);
-        }
-
-        .info-close-btn:active {
-            transform: scale(0.95);
-        }
 
         .info-title {
             font-size: 1.1rem;
@@ -300,9 +272,8 @@
         </div>
 
         <div class="info-panel" id="infoPanel">
-            <button class="info-close-btn" id="infoCloseBtn" aria-label="Close information panel">×</button>
             <div class="info-title" id="infoTitle">Select a poster area</div>
-            <div class="info-description" id="infoDescription">Click on any poster area to view details</div>
+            <div class="info-description" id="infoDescription">Hover over any poster area to view details</div>
         </div>
     </div>
 
@@ -389,8 +360,8 @@
                     interactive: false
                 });
                 
-                // Load poster data from TSV file with positioning coordinates
-                layout.loadPostersFromTSV('Poster_Research_Scholarships.tsv', {
+                // Load poster data from TSV files - separate poster and mount data
+                layout.loadPostersFromTSV('Poster_Research_Scholarships.tsv', 'Mounts.tsv', {
                     startX: 300,           // Starting X coordinate (fallback for grid)
                     startY: 300,           // Starting Y coordinate (fallback for grid)
                     spacing: 70,           // Space between mounts (fallback for grid)
@@ -398,29 +369,6 @@
                     alternateOrientation: true  // Mix vertical and horizontal mounts (fallback for grid)
                 });
                 
-                // Add close button functionality to info panel
-                const infoCloseBtn = document.getElementById('infoCloseBtn');
-                const infoPanel = document.getElementById('infoPanel');
-                
-                infoCloseBtn.addEventListener('click', () => {
-                    infoPanel.classList.remove('active');
-                    // Clear any auto-hide timer
-                    if (window.posterMap.infoTimer) {
-                        clearTimeout(window.posterMap.infoTimer);
-                    }
-                });
-                
-                // Also close on tap outside the panel (mobile UX)
-                document.addEventListener('click', (e) => {
-                    if (infoPanel.classList.contains('active') && 
-                        !infoPanel.contains(e.target) && 
-                        !e.target.closest('[data-side]')) { // Don't close if clicking poster markers
-                        infoPanel.classList.remove('active');
-                        if (window.posterMap.infoTimer) {
-                            clearTimeout(window.posterMap.infoTimer);
-                        }
-                    }
-                });
                 
                 // Make layout API available globally for easy testing
                 window.layout = layout;

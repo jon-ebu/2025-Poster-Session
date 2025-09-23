@@ -647,10 +647,9 @@ class LayoutAPI {
         // Add click handlers for both sides
         const showPosterInfo = (side) => {
             const poster = side === 'A' ? config.sideA : config.sideB;
-            const sideLabel = side === 'A' ? 'Side A' : 'Side B';
             
             if (window.posterMap) {
-                window.posterMap.infoTitle.textContent = `${poster.title || 'Poster Information'} (${sideLabel})`;
+                window.posterMap.infoTitle.textContent = `${poster.title || 'Poster Information'}`;
                 window.posterMap.infoDescription.innerHTML = `
                     <p><strong>Student(s):</strong> ${poster.students || poster.authors || 'N/A'}</p>
                     <p><strong>Faculty/Mentor:</strong> ${poster.facultyMentor || 'N/A'}</p>
@@ -658,25 +657,36 @@ class LayoutAPI {
                     <p><strong>Easel Board:</strong> ${poster.easelBoard || poster.session || 'N/A'}</p>
                 `;
                 window.posterMap.infoPanel.classList.add('active');
-                
-                // Clear any existing auto-hide timer
-                if (window.posterMap.infoTimer) {
-                    clearTimeout(window.posterMap.infoTimer);
-                }
-                
-                // Auto-hide after 8 seconds for mobile UX
-                window.posterMap.infoTimer = setTimeout(() => {
-                    window.posterMap.infoPanel.classList.remove('active');
-                }, 8000);
             }
         };
 
-        // Add event handlers to both visible indicators and invisible touch areas
+        // Add hide function
+        const hidePosterInfo = () => {
+            if (window.posterMap && window.posterMap.infoPanel) {
+                window.posterMap.infoPanel.classList.remove('active');
+            }
+        };
+
+        // Add hover event handlers to both visible indicators and invisible touch areas
         const addEventHandlers = (element, side) => {
-            element.addEventListener('click', () => showPosterInfo(side));
-            element.addEventListener('touchend', (e) => {
+            // Mouse hover events
+            element.addEventListener('mouseenter', () => {
+                showPosterInfo(side);
+            });
+            
+            element.addEventListener('mouseleave', () => {
+                hidePosterInfo();
+            });
+
+            // Touch events for mobile (touch to show info briefly)
+            element.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 showPosterInfo(side);
+            });
+            
+            element.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                // Info will stay visible until user touches elsewhere or another poster
             });
         };
 
@@ -687,6 +697,14 @@ class LayoutAPI {
 
         // Keyboard support (only on visible indicators)
         [sideAIndicator, sideBIndicator].forEach(indicator => {
+            indicator.addEventListener('focus', () => {
+                showPosterInfo(indicator.getAttribute('data-side'));
+            });
+            
+            indicator.addEventListener('blur', () => {
+                hidePosterInfo();
+            });
+
             indicator.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -712,40 +730,46 @@ class LayoutAPI {
      * @param {string} tsvUrl - URL to the TSV file
      * @param {Object} layoutConfig - Configuration for poster layout
      */
-    async loadPostersFromTSV(tsvUrl, layoutConfig = {}) {
+    async loadPostersFromTSV(posterTsvUrl, mountTsvUrl = 'Mounts.tsv', layoutConfig = {}) {
         try {
-            const response = await fetch(tsvUrl);
-            const tsvText = await response.text();
-            const posters = this.parseTSV(tsvText);
+            // Load both TSV files
+            const [posterResponse, mountResponse] = await Promise.all([
+                fetch(posterTsvUrl),
+                fetch(mountTsvUrl)
+            ]);
             
-            console.log(`Loaded ${posters.length} posters from TSV`);
+            const posterTsvText = await posterResponse.text();
+            const mountTsvText = await mountResponse.text();
             
-            // Create poster mounts from the data
-            this.createPosterMounts(posters, layoutConfig);
+            const posters = this.parsePosterTSV(posterTsvText);
+            const mounts = this.parseMountTSV(mountTsvText);
+            
+            console.log(`Loaded ${posters.length} posters and ${mounts.length} mounts from TSV files`);
+            
+            // Create poster mounts from the combined data
+            this.createPosterMountsFromSeparateData(posters, mounts, layoutConfig);
             
         } catch (error) {
-            console.error('Error loading TSV:', error);
+            console.error('Error loading TSV files:', error);
         }
     }
 
     /**
-     * Parse TSV data into poster objects
+     * Parse poster TSV data into poster objects
      */
-    parseTSV(tsvText) {
+    parsePosterTSV(tsvText) {
         const lines = tsvText.split('\n');
         const headers = lines[0].split('\t').map(h => h.trim());
         const posters = [];
         
-        // Find column indices for positioning data (if they exist)
+        // Find column indices for poster data
         const categoryIndex = headers.indexOf('Poster Category') || 0;
         const easelBoardIndex = headers.indexOf('Easel Board') || 1;
         const titleIndex = headers.indexOf('Poster Title') || 2;
         const studentsIndex = headers.indexOf('Student(s)') || 3;
         const mentorIndex = headers.indexOf('Faculty/Mentor') || 4;
         const mountIdIndex = headers.indexOf('Mount ID');
-        const xCoordIndex = headers.indexOf('X Coordinate');
-        const yCoordIndex = headers.indexOf('Y Coordinate');
-        const orientationIndex = headers.indexOf('Orientation');
+        const sideIndex = headers.indexOf('Side');
         
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
@@ -761,18 +785,12 @@ class LayoutAPI {
                     facultyMentor: values[mentorIndex]
                 };
                 
-                // Add positioning data if columns exist
+                // Add mount and side data if columns exist
                 if (mountIdIndex >= 0 && values[mountIdIndex]) {
                     poster.mountId = values[mountIdIndex].trim();
                 }
-                if (xCoordIndex >= 0 && values[xCoordIndex]) {
-                    poster.xCoord = parseFloat(values[xCoordIndex]);
-                }
-                if (yCoordIndex >= 0 && values[yCoordIndex]) {
-                    poster.yCoord = parseFloat(values[yCoordIndex]);
-                }
-                if (orientationIndex >= 0 && values[orientationIndex]) {
-                    poster.orientation = values[orientationIndex].trim().toLowerCase();
+                if (sideIndex >= 0 && values[sideIndex]) {
+                    poster.side = values[sideIndex].trim();
                 }
                 
                 posters.push(poster);
@@ -783,7 +801,145 @@ class LayoutAPI {
     }
 
     /**
-     * Create poster mounts from poster data
+     * Parse mount TSV data into mount objects
+     */
+    parseMountTSV(tsvText) {
+        const lines = tsvText.split('\n');
+        const headers = lines[0].split('\t').map(h => h.trim());
+        const mounts = [];
+        
+        // Find column indices for mount data
+        const mountIdIndex = headers.indexOf('Mount ID') || 0;
+        const xCoordIndex = headers.indexOf('X Coordinate') || 1;
+        const yCoordIndex = headers.indexOf('Y Coordinate') || 2;
+        const orientationIndex = headers.indexOf('Orientation') || 3;
+        
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const values = line.split('\t');
+            if (values.length >= 4) {
+                const mount = {
+                    mountId: values[mountIdIndex]?.trim(),
+                    xCoord: parseFloat(values[xCoordIndex]) || 0,
+                    yCoord: parseFloat(values[yCoordIndex]) || 0,
+                    orientation: values[orientationIndex]?.trim().toLowerCase() || 'vertical'
+                };
+                
+                mounts.push(mount);
+            }
+        }
+        
+        return mounts;
+    }
+
+    /**
+     * Create poster mounts from separate poster and mount data
+     */
+    createPosterMountsFromSeparateData(posters, mounts, layoutConfig) {
+        // Create a map of mount data by mount ID for easy lookup
+        const mountMap = new Map();
+        mounts.forEach(mount => {
+            mountMap.set(mount.mountId, mount);
+        });
+
+        // Group posters by mount ID
+        const mountGroups = new Map();
+        
+        posters.forEach(poster => {
+            if (poster.mountId && mountMap.has(poster.mountId)) {
+                if (!mountGroups.has(poster.mountId)) {
+                    mountGroups.set(poster.mountId, []);
+                }
+                mountGroups.get(poster.mountId).push(poster);
+            }
+        });
+        
+        // Create poster mounts for each group
+        mountGroups.forEach((mountPosters, mountId) => {
+            const mountData = mountMap.get(mountId);
+            if (!mountData) return;
+            
+            const orientation = mountData.orientation || 'vertical';
+            const position = { x: mountData.xCoord, y: mountData.yCoord };
+            
+            // Sort posters by their designated side
+            let sideAPosters = [];
+            let sideBPosters = [];
+            
+            mountPosters.forEach(poster => {
+                const side = poster.side;
+                if (orientation === 'horizontal') {
+                    // For horizontal: North goes to A, South goes to B
+                    if (side === 'North') {
+                        sideAPosters.push(poster);
+                    } else if (side === 'South') {
+                        sideBPosters.push(poster);
+                    } else {
+                        // Default assignment if no side specified
+                        if (sideAPosters.length === 0) {
+                            sideAPosters.push(poster);
+                        } else {
+                            sideBPosters.push(poster);
+                        }
+                    }
+                } else {
+                    // For vertical: West goes to A, East goes to B
+                    if (side === 'West') {
+                        sideAPosters.push(poster);
+                    } else if (side === 'East') {
+                        sideBPosters.push(poster);
+                    } else {
+                        // Default assignment if no side specified
+                        if (sideAPosters.length === 0) {
+                            sideAPosters.push(poster);
+                        } else {
+                            sideBPosters.push(poster);
+                        }
+                    }
+                }
+            });
+            
+            const sideAPoster = sideAPosters[0] || null;
+            const sideBPoster = sideBPosters[0] || null;
+            
+            this.addPosterMount({
+                id: mountId,
+                position: position,
+                orientation: orientation,
+                sideA: sideAPoster ? {
+                    title: sideAPoster.title,
+                    students: sideAPoster.students,
+                    facultyMentor: sideAPoster.facultyMentor,
+                    category: sideAPoster.category,
+                    easelBoard: sideAPoster.easelBoard
+                } : {
+                    title: 'Available Space',
+                    students: 'No poster assigned',
+                    facultyMentor: 'N/A',
+                    category: 'Available',
+                    easelBoard: 'Unassigned'
+                },
+                sideB: sideBPoster ? {
+                    title: sideBPoster.title,
+                    students: sideBPoster.students,
+                    facultyMentor: sideBPoster.facultyMentor,
+                    category: sideBPoster.category,
+                    easelBoard: sideBPoster.easelBoard
+                } : {
+                    title: 'Available Space',
+                    students: 'No poster assigned',
+                    facultyMentor: 'N/A',
+                    category: 'Available',
+                    easelBoard: 'Unassigned'
+                }
+            });
+        });
+    }
+
+    /**
+     * Create poster mounts from poster data (legacy method)
      */
     createPosterMounts(posters, layoutConfig) {
         const {
@@ -830,7 +986,7 @@ class LayoutAPI {
         // Create poster mounts for each group
         mountGroups.forEach((mountPosters, mountId) => {
             const primaryPoster = mountPosters[0];
-            const secondaryPoster = mountPosters[1] || null;
+            const orientation = primaryPoster.orientation || 'vertical';
             
             // Determine position from first poster with coordinates
             let position = { x: 400, y: 400 }; // default
@@ -838,26 +994,69 @@ class LayoutAPI {
                 position = { x: primaryPoster.xCoord, y: primaryPoster.yCoord };
             }
             
-            // Determine orientation
-            const orientation = primaryPoster.orientation || 'vertical';
+            // Sort posters by their designated side
+            let sideAPosters = [];
+            let sideBPosters = [];
+            
+            mountPosters.forEach(poster => {
+                const side = poster.side;
+                if (orientation === 'horizontal') {
+                    // For horizontal: North goes to A, South goes to B
+                    if (side === 'North') {
+                        sideAPosters.push(poster);
+                    } else if (side === 'South') {
+                        sideBPosters.push(poster);
+                    } else {
+                        // Default assignment if no side specified
+                        if (sideAPosters.length === 0) {
+                            sideAPosters.push(poster);
+                        } else {
+                            sideBPosters.push(poster);
+                        }
+                    }
+                } else {
+                    // For vertical: West goes to A, East goes to B
+                    if (side === 'West') {
+                        sideAPosters.push(poster);
+                    } else if (side === 'East') {
+                        sideBPosters.push(poster);
+                    } else {
+                        // Default assignment if no side specified
+                        if (sideAPosters.length === 0) {
+                            sideAPosters.push(poster);
+                        } else {
+                            sideBPosters.push(poster);
+                        }
+                    }
+                }
+            });
+            
+            const sideAPoster = sideAPosters[0] || null;
+            const sideBPoster = sideBPosters[0] || null;
             
             this.addPosterMount({
                 id: mountId,
                 position: position,
                 orientation: orientation,
-                sideA: {
-                    title: primaryPoster.title,
-                    students: primaryPoster.students,
-                    facultyMentor: primaryPoster.facultyMentor,
-                    category: primaryPoster.category,
-                    easelBoard: primaryPoster.easelBoard
+                sideA: sideAPoster ? {
+                    title: sideAPoster.title,
+                    students: sideAPoster.students,
+                    facultyMentor: sideAPoster.facultyMentor,
+                    category: sideAPoster.category,
+                    easelBoard: sideAPoster.easelBoard
+                } : {
+                    title: 'Available Space',
+                    students: 'No poster assigned',
+                    facultyMentor: 'N/A',
+                    category: 'Available',
+                    easelBoard: 'Unassigned'
                 },
-                sideB: secondaryPoster ? {
-                    title: secondaryPoster.title,
-                    students: secondaryPoster.students,
-                    facultyMentor: secondaryPoster.facultyMentor,
-                    category: secondaryPoster.category,
-                    easelBoard: secondaryPoster.easelBoard
+                sideB: sideBPoster ? {
+                    title: sideBPoster.title,
+                    students: sideBPoster.students,
+                    facultyMentor: sideBPoster.facultyMentor,
+                    category: sideBPoster.category,
+                    easelBoard: sideBPoster.easelBoard
                 } : {
                     title: 'Available Space',
                     students: 'No poster assigned',
