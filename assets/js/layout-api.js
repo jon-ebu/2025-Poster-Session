@@ -105,15 +105,15 @@ class LayoutAPI {
         
         const textLength = text.length;
         
-        // Scale font size based on text length to fit in 12px radius circle
+        // Scale font size based on text length to fit in 14px radius circle
         if (textLength <= 2) {
-            return '8';  // Default size for short text like "B1", "C5"
+            return '9';  // Default size for short text like "B1", "C5"
         } else if (textLength <= 4) {
-            return '6';  // Smaller for medium text like "CS-1", "BCS1"
+            return '7';  // Smaller for medium text like "CS-1", "BCS1"
         } else if (textLength <= 6) {
-            return '5';  // Even smaller for longer text like "CSEM-1"
+            return '6';  // Even smaller for longer text like "CSEM-1"
         } else {
-            return '4';  // Smallest for very long text
+            return '5';  // Smallest for very long text
         }
     }
 
@@ -591,8 +591,8 @@ class LayoutAPI {
         board.setAttribute('width', boardWidth);
         board.setAttribute('height', boardHeight);
         board.setAttribute('rx', 2);
-        board.setAttribute('fill', config.style?.boardFill || '#404040');
-        board.setAttribute('stroke', config.style?.boardStroke || '#202020');
+        board.setAttribute('fill', config.style?.boardFill || '#4a4a4a');
+        board.setAttribute('stroke', config.style?.boardStroke || '#2a2a2a');
         board.setAttribute('stroke-width', config.style?.boardStrokeWidth || 1);
         board.setAttribute('pointer-events', 'none');
         group.appendChild(board);
@@ -601,7 +601,7 @@ class LayoutAPI {
         const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         marker.setAttribute('cx', 0);
         marker.setAttribute('cy', 0);
-        marker.setAttribute('r', 12);
+        marker.setAttribute('r', 14);
         marker.setAttribute('fill', this.getColorByEaselBoardId(config.poster.easelBoard));
         marker.setAttribute('stroke', 'white');
         marker.setAttribute('stroke-width', 2);
@@ -642,9 +642,32 @@ class LayoutAPI {
         const touchArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         touchArea.setAttribute('cx', 0);
         touchArea.setAttribute('cy', 0);
-        touchArea.setAttribute('r', 26); // Slightly larger to accommodate expanded circle
+        touchArea.setAttribute('r', 28); // Slightly larger to accommodate expanded circle
         touchArea.setAttribute('fill', 'transparent');
         touchArea.style.cursor = 'pointer';
+
+        const originalFontSize = Number(fontSize);
+
+        const isMultiTouchGestureActive = () => Boolean(window.posterMap && window.posterMap.isMultiTouchGesture);
+
+        const activateMarker = () => {
+            marker.setAttribute('r', '16');
+            marker.style.filter = 'drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
+
+            if (!Number.isNaN(originalFontSize) && originalFontSize > 0) {
+                markerText.setAttribute('font-size', originalFontSize * 1.2);
+            }
+        };
+
+        const resetMarker = () => {
+            marker.setAttribute('r', '14');
+            marker.style.filter = 'none';
+
+            const storedFontSize = markerText.getAttribute('data-original-font-size');
+            if (storedFontSize) {
+                markerText.setAttribute('font-size', storedFontSize);
+            }
+        };
 
         // Create a shared timer for all markers to prevent conflicts
         if (!window.posterInfoTimer) {
@@ -682,15 +705,22 @@ class LayoutAPI {
         }
         
         const showPosterInfo = () => {
+            if (isMultiTouchGestureActive()) {
+                return;
+            }
             // Always cancel any pending hide timer first
             if (window.posterInfoTimer) {
                 clearTimeout(window.posterInfoTimer);
                 window.posterInfoTimer = null;
             }
-            
+
             // Reduced delay for faster switching between markers
             const showDelay = 50; // Reduced from 150ms to 50ms
             window.posterInfoTimer = setTimeout(() => {
+                if (isMultiTouchGestureActive()) {
+                    window.posterInfoTimer = null;
+                    return;
+                }
                 // Only check velocity if mouse is moving very fast (increased threshold)
                 const velocityThreshold = 2.0; // Increased from 0.8 to 2.0
                 if (window.mouseVelocityTracker && window.mouseVelocityTracker.velocity > velocityThreshold) {
@@ -702,7 +732,7 @@ class LayoutAPI {
                     const title = config.poster.title || 'Poster Information';
                     const bgColor = window.layout?.getColorByEaselBoardId?.(easel) || '#404040';
                     const textColor = window.layout?.getTextColorForBackground?.(bgColor) || 'white';
-                    const fontSize = easel.length <= 2 ? 12 : easel.length <= 4 ? 10 : easel.length <= 6 ? 9 : 8;
+                    const fontSize = easel.length <= 2 ? 13 : easel.length <= 4 ? 11 : easel.length <= 6 ? 10 : 9;
                     window.posterMap.infoTitle.innerHTML = `
                         <span class="easel-pill" data-easel="${easel}">
                             <svg class="easel-pill__svg" viewBox="0 0 36 36" role="presentation">
@@ -715,7 +745,7 @@ class LayoutAPI {
                     window.posterMap.infoDescription.innerHTML = `
                         <p><strong>Student(s):</strong> ${config.poster.students || 'N/A'}</p>
                         <p><strong>Faculty/Mentor:</strong> ${config.poster.facultyMentor || 'N/A'}</p>
-                        <p><strong>Poster Category:</strong> ${config.poster.category || 'N/A'}</p>
+                        <p><strong>Category:</strong> ${config.poster.category || 'N/A'}</p>
                     `;
                     
                     // Position based on marker location and content length
@@ -884,42 +914,45 @@ class LayoutAPI {
 
         // Add hover effects for balloon animation and info display
         marker.addEventListener('mouseenter', () => {
-            marker.setAttribute('r', '14'); // Increase radius from 12 to 14
-            marker.style.filter = 'drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
-            
-            // Scale up the text font size
-            const originalFontSize = parseFloat(markerText.getAttribute('data-original-font-size'));
-            markerText.setAttribute('font-size', originalFontSize * 1.2); // 20% larger
-            
+            activateMarker();
+
             // Show mount ID in console for dev debugging
             console.log(`Mount ID: ${config.id}`);
-            
+
             showPosterInfo();
         });
-        
+
         marker.addEventListener('mouseleave', () => {
-            marker.setAttribute('r', '12'); // Reset radius back to 12
-            marker.style.filter = 'none';
-            
-            // Reset text font size
-            const originalFontSize = markerText.getAttribute('data-original-font-size');
-            markerText.setAttribute('font-size', originalFontSize);
-            
+            resetMarker();
             hidePosterInfo();
         });
 
         // Touch events
         marker.addEventListener('touchstart', (e) => {
+            if ((e.touches && e.touches.length > 1) || isMultiTouchGestureActive()) {
+                return;
+            }
             e.preventDefault();
+            activateMarker();
             showPosterInfo();
+        });
+
+        marker.addEventListener('touchend', () => {
+            resetMarker();
+        });
+
+        marker.addEventListener('touchcancel', () => {
+            resetMarker();
         });
 
         // Keyboard support
         marker.addEventListener('focus', () => {
+            activateMarker();
             showPosterInfo();
         });
         
         marker.addEventListener('blur', () => {
+            resetMarker();
             hidePosterInfo();
         });
 
@@ -987,8 +1020,8 @@ class LayoutAPI {
         mount.setAttribute('width', width);
         mount.setAttribute('height', height);
         mount.setAttribute('rx', 2);
-        mount.setAttribute('fill', config.style?.fill || '#404040');
-        mount.setAttribute('stroke', config.style?.stroke || '#202020');
+        mount.setAttribute('fill', config.style?.fill || '#4a4a4a');
+        mount.setAttribute('stroke', config.style?.stroke || '#2a2a2a');
         mount.setAttribute('stroke-width', config.style?.strokeWidth || 1);
 
         // Create side A indicator (left or top side) - Mobile-friendly touch target
@@ -996,7 +1029,7 @@ class LayoutAPI {
         const offsetA = isVertical ? { x: -width/1.5, y: -height/2.8 } : { x: -width/3, y: -height/2.5 };
         sideAIndicator.setAttribute('cx', offsetA.x);
         sideAIndicator.setAttribute('cy', offsetA.y);
-        sideAIndicator.setAttribute('r', 12); // Same size for all mounts
+        sideAIndicator.setAttribute('r', 14); // Same size for all mounts
         sideAIndicator.setAttribute('fill', this.getColorByEaselBoardId(config.sideA.easelBoard));
         sideAIndicator.setAttribute('stroke', 'white');
         sideAIndicator.setAttribute('stroke-width', 2);
@@ -1009,32 +1042,6 @@ class LayoutAPI {
         sideAIndicator.setAttribute('aria-label', `Poster A: ${config.sideA.title}`);
         sideAIndicator.classList.add('color-marker');
         
-        // Add smooth balloon hover effect with info display
-        sideAIndicator.addEventListener('mouseenter', () => {
-            sideAIndicator.setAttribute('r', '14'); // Increase radius from 12 to 14
-            sideAIndicator.style.filter = 'drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
-            
-            // Scale up the text font size
-            const originalFontSize = parseFloat(sideAText.getAttribute('data-original-font-size'));
-            sideAText.setAttribute('font-size', originalFontSize * 1.2); // 20% larger
-            
-            // Show mount ID in console for dev debugging
-            console.log(`Mount ID: ${config.id}`);
-            
-            showPosterInfo('A');
-        });
-        
-        sideAIndicator.addEventListener('mouseleave', () => {
-            sideAIndicator.setAttribute('r', '12'); // Reset radius back to 12
-            sideAIndicator.style.filter = 'none';
-            
-            // Reset text font size
-            const originalFontSize = sideAText.getAttribute('data-original-font-size');
-            sideAText.setAttribute('font-size', originalFontSize);
-            
-            hidePosterInfo();
-        });
-
         // Add text for side A showing easel ID with dynamic sizing
         const sideAText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         sideAText.setAttribute('x', offsetA.x);
@@ -1064,7 +1071,7 @@ class LayoutAPI {
         const sideATouchArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         sideATouchArea.setAttribute('cx', offsetA.x);
         sideATouchArea.setAttribute('cy', offsetA.y);
-        sideATouchArea.setAttribute('r', 26); // Slightly larger to accommodate expanded circle
+        sideATouchArea.setAttribute('r', 28); // Slightly larger to accommodate expanded circle
         sideATouchArea.setAttribute('fill', 'transparent');
         sideATouchArea.style.cursor = 'pointer';
         sideATouchArea.setAttribute('data-side', 'A');
@@ -1074,7 +1081,7 @@ class LayoutAPI {
         const offsetB = isVertical ? { x: width/1.5, y: height/2.8 } : { x: width/3, y: height/2.5 };
         sideBIndicator.setAttribute('cx', offsetB.x);
         sideBIndicator.setAttribute('cy', offsetB.y);
-        sideBIndicator.setAttribute('r', 12); // Same size for all mounts
+        sideBIndicator.setAttribute('r', 14); // Same size for all mounts
         sideBIndicator.setAttribute('fill', this.getColorByEaselBoardId(config.sideB.easelBoard));
         sideBIndicator.setAttribute('stroke', 'white');
         sideBIndicator.setAttribute('stroke-width', 2);
@@ -1087,32 +1094,6 @@ class LayoutAPI {
         sideBIndicator.setAttribute('aria-label', `Poster B: ${config.sideB.title}`);
         sideBIndicator.classList.add('color-marker');
         
-        // Add smooth balloon hover effect with info display
-        sideBIndicator.addEventListener('mouseenter', () => {
-            sideBIndicator.setAttribute('r', '14'); // Increase radius from 12 to 14
-            sideBIndicator.style.filter = 'drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
-            
-            // Scale up the text font size
-            const originalFontSize = parseFloat(sideBText.getAttribute('data-original-font-size'));
-            sideBText.setAttribute('font-size', originalFontSize * 1.2); // 20% larger
-            
-            // Show mount ID in console for dev debugging
-            console.log(`Mount ID: ${config.id}`);
-            
-            showPosterInfo('B');
-        });
-        
-        sideBIndicator.addEventListener('mouseleave', () => {
-            sideBIndicator.setAttribute('r', '12'); // Reset radius back to 12
-            sideBIndicator.style.filter = 'none';
-            
-            // Reset text font size
-            const originalFontSize = sideBText.getAttribute('data-original-font-size');
-            sideBText.setAttribute('font-size', originalFontSize);
-            
-            hidePosterInfo();
-        });
-
         // Add text for side B showing easel ID with dynamic sizing
         const sideBText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         sideBText.setAttribute('x', offsetB.x);
@@ -1142,12 +1123,83 @@ class LayoutAPI {
         const sideBTouchArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         sideBTouchArea.setAttribute('cx', offsetB.x);
         sideBTouchArea.setAttribute('cy', offsetB.y);
-        sideBTouchArea.setAttribute('r', 26); // Slightly larger to accommodate expanded circle
+        sideBTouchArea.setAttribute('r', 28); // Slightly larger to accommodate expanded circle
         sideBTouchArea.setAttribute('fill', 'transparent');
         sideBTouchArea.style.cursor = 'pointer';
         sideBTouchArea.setAttribute('data-side', 'B');
 
-        // Add hover handlers for both sides
+        const isMultiTouchGestureActive = () => Boolean(window.posterMap && window.posterMap.isMultiTouchGesture);
+
+        const activateIndicator = (indicator, text) => {
+            indicator.setAttribute('r', '16');
+            indicator.style.filter = 'drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
+
+            const originalFontSize = Number(text.getAttribute('data-original-font-size'));
+            if (!Number.isNaN(originalFontSize) && originalFontSize > 0) {
+                text.setAttribute('font-size', originalFontSize * 1.2);
+            }
+        };
+
+        const resetIndicator = (indicator, text) => {
+            indicator.setAttribute('r', '14');
+            indicator.style.filter = 'none';
+
+            const storedFontSize = text.getAttribute('data-original-font-size');
+            if (storedFontSize) {
+                text.setAttribute('font-size', storedFontSize);
+            }
+        };
+
+        const attachInteractiveHandlers = (side, indicator, text) => {
+            indicator.addEventListener('mouseenter', () => {
+                activateIndicator(indicator, text);
+                console.log(`Mount ID: ${config.id}`);
+                showPosterInfo(side);
+            });
+
+            indicator.addEventListener('mouseleave', () => {
+                resetIndicator(indicator, text);
+                hidePosterInfo();
+            });
+
+            indicator.addEventListener('touchstart', (e) => {
+                if ((e.touches && e.touches.length > 1) || isMultiTouchGestureActive()) {
+                    return;
+                }
+                e.preventDefault();
+                activateIndicator(indicator, text);
+                showPosterInfo(side);
+            });
+
+            indicator.addEventListener('touchend', () => {
+                resetIndicator(indicator, text);
+            });
+
+            indicator.addEventListener('touchcancel', () => {
+                resetIndicator(indicator, text);
+            });
+
+            indicator.addEventListener('focus', () => {
+                activateIndicator(indicator, text);
+                showPosterInfo(side);
+            });
+
+            indicator.addEventListener('blur', () => {
+                resetIndicator(indicator, text);
+                hidePosterInfo();
+            });
+
+            indicator.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    activateIndicator(indicator, text);
+                    showPosterInfo(side);
+                }
+            });
+        };
+
+        attachInteractiveHandlers('A', sideAIndicator, sideAText);
+        attachInteractiveHandlers('B', sideBIndicator, sideBText);
 
         // Create a shared timer for all markers on this mount to prevent conflicts
         if (!window.posterInfoTimer) {
@@ -1185,6 +1237,9 @@ class LayoutAPI {
         }
         
         const showPosterInfo = (side) => {
+            if (isMultiTouchGestureActive()) {
+                return;
+            }
             // Always cancel any pending hide timer first
             if (window.posterInfoTimer) {
                 clearTimeout(window.posterInfoTimer);
@@ -1197,6 +1252,10 @@ class LayoutAPI {
             // Reduced delay for faster switching between markers
             const showDelay = 50; // Reduced from 150ms to 50ms
             window.posterInfoTimer = setTimeout(() => {
+                if (isMultiTouchGestureActive()) {
+                    window.posterInfoTimer = null;
+                    return;
+                }
                 // Only check velocity if mouse is moving very fast (increased threshold)
                 const velocityThreshold = 2.0; // Increased from 0.8 to 2.0
                 if (window.mouseVelocityTracker && window.mouseVelocityTracker.velocity > velocityThreshold) {
@@ -1221,7 +1280,7 @@ class LayoutAPI {
                     window.posterMap.infoDescription.innerHTML = `
                         <p><strong>Student(s):</strong> ${poster.students || poster.authors || 'N/A'}</p>
                         <p><strong>Faculty/Mentor:</strong> ${poster.facultyMentor || 'N/A'}</p>
-                        <p><strong>Poster Category:</strong> ${poster.category || 'N/A'}</p>
+                        <p><strong>Category:</strong> ${poster.category || 'N/A'}</p>
                     `;
                     
                     // Position based on marker location and content length
@@ -1390,34 +1449,6 @@ class LayoutAPI {
 
         // Combined hover effects for balloon animation and info display
 
-        // Touch events
-        sideAIndicator.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            showPosterInfo('A');
-        });
-        sideBIndicator.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            showPosterInfo('B');
-        });
-
-        // Keyboard support (only on visible indicators)
-        [sideAIndicator, sideBIndicator].forEach(indicator => {
-            indicator.addEventListener('focus', () => {
-                showPosterInfo(indicator.getAttribute('data-side'));
-            });
-            
-            indicator.addEventListener('blur', () => {
-                hidePosterInfo();
-            });
-
-            indicator.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    showPosterInfo(indicator.getAttribute('data-side'));
-                }
-            });
-        });
-
         // Append all elements
         group.appendChild(mount);
         group.appendChild(sideAIndicator);
@@ -1463,16 +1494,33 @@ class LayoutAPI {
     parsePosterTSV(tsvText) {
         const lines = tsvText.split('\n');
         const headers = lines[0].split('\t').map(h => h.trim());
+        const findIndex = (names, defaultIndex = -1) => {
+            const searchTerms = Array.isArray(names) ? names : [names];
+            for (const name of searchTerms) {
+                const index = headers.indexOf(name);
+                if (index !== -1) {
+                    return index;
+                }
+            }
+            return defaultIndex;
+        };
+        const getValue = (values, index) => {
+            if (index < 0 || index >= values.length) {
+                return '';
+            }
+            const value = values[index];
+            return typeof value === 'string' ? value.trim() : '';
+        };
         const posters = [];
         
         // Find column indices for poster data
-        const categoryIndex = headers.indexOf('Poster Category') || 0;
-        const easelBoardIndex = headers.indexOf('Easel Board') || 1;
-        const titleIndex = headers.indexOf('Poster Title') || 2;
-        const studentsIndex = headers.indexOf('Student(s)') || 3;
-        const mentorIndex = headers.indexOf('Faculty/Mentor') || 4;
-        const mountIdIndex = headers.indexOf('Mount ID');
-        const sideIndex = headers.indexOf('Side');
+        const categoryIndex = findIndex(['Poster Category', 'Category']);
+        const easelBoardIndex = findIndex('Easel Board', 1);
+        const titleIndex = findIndex('Poster Title', 2);
+        const studentsIndex = findIndex('Student(s)', 3);
+        const mentorIndex = findIndex('Faculty/Mentor', 4);
+        const mountIdIndex = findIndex('Mount ID');
+        const sideIndex = findIndex('Side');
         
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
@@ -1481,19 +1529,25 @@ class LayoutAPI {
             const values = line.split('\t');
             if (values.length >= 5) {
                 const poster = {
-                    category: values[categoryIndex],
-                    easelBoard: values[easelBoardIndex],
-                    title: values[titleIndex],
-                    students: values[studentsIndex],
-                    facultyMentor: values[mentorIndex]
+                    category: getValue(values, categoryIndex),
+                    easelBoard: getValue(values, easelBoardIndex),
+                    title: getValue(values, titleIndex),
+                    students: getValue(values, studentsIndex),
+                    facultyMentor: getValue(values, mentorIndex)
                 };
                 
                 // Add mount and side data if columns exist
-                if (mountIdIndex >= 0 && values[mountIdIndex]) {
-                    poster.mountId = values[mountIdIndex].trim();
+                if (mountIdIndex >= 0) {
+                    const mountValue = getValue(values, mountIdIndex);
+                    if (mountValue) {
+                        poster.mountId = mountValue;
+                    }
                 }
-                if (sideIndex >= 0 && values[sideIndex]) {
-                    poster.side = values[sideIndex].trim();
+                if (sideIndex >= 0) {
+                    const sideValue = getValue(values, sideIndex);
+                    if (sideValue) {
+                        poster.side = sideValue;
+                    }
                 }
                 
                 posters.push(poster);

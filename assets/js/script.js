@@ -8,18 +8,18 @@ class PosterSessionMap {
         this.infoTitle = document.getElementById('infoTitle');
         this.infoDescription = document.getElementById('infoDescription');
         this.fullscreenBtn = document.getElementById('toggleFullscreen');
-        this.tableToggleBtn = document.getElementById('tableToggle');
         this.tablePanel = document.getElementById('tablePanel');
+        this.fullscreenEnterIcon = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707m4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707m0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707m-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707"/>
+            </svg>`;
+        this.fullscreenExitIcon = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen-exit" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                <path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5m5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5M0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5m10 1a1.5 1.5 0 0 1 1.5-1.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0z"/>
+            </svg>`;
         this.isFullScreen = document.body.classList.contains('map-fullscreen');
-        this.isTableOpen = document.body.classList.contains('map-table-open');
         this.handleGlobalKeydown = (event) => {
             if (event.key !== 'Escape') {
-                return;
-            }
-
-            if (this.isFullScreen && this.isTableOpen) {
-                event.preventDefault();
-                this.toggleTable(false);
                 return;
             }
 
@@ -40,6 +40,12 @@ class PosterSessionMap {
         this.selectedArea = null;
         this.panAnimationFrame = null;
         this.panAnimationComplete = null;
+
+        this.isMultiTouchGesture = false;
+        this.infoAutoHideTimer = null;
+        this.lastClosedAreaId = null;
+        this.lastClosedTime = 0;
+        this.lastClosedInteractionType = null;
 
         this.baseWidth = 1150;
         this.baseHeight = 1360;
@@ -70,11 +76,43 @@ class PosterSessionMap {
             this.fullscreenBtn.addEventListener('click', () => this.toggleFullScreen());
         }
 
-        if (this.tableToggleBtn) {
-            this.tableToggleBtn.addEventListener('click', () => this.toggleTable());
-        }
-
         document.addEventListener('keydown', this.handleGlobalKeydown);
+
+        const handleGlobalTouchStart = (event) => {
+            if (!event || !event.touches) {
+                return;
+            }
+
+            if (event.touches.length > 1) {
+                return;
+            }
+
+            const touchTarget = event.target;
+            if (!touchTarget) {
+                return;
+            }
+
+            const touchedMarker = touchTarget.closest('[data-side]') ||
+                                  touchTarget.closest('.color-marker');
+            if (touchedMarker) {
+                return;
+            }
+
+            const touchedPosterArea = touchTarget.closest('.poster-area') ||
+                                      touchTarget.closest('[data-area-id]');
+            if (touchedPosterArea) {
+                return;
+            }
+
+            const touchedInfoPanel = touchTarget.closest('.info-panel');
+            if (touchedInfoPanel) {
+                return;
+            }
+
+            this.hideInfo();
+        };
+
+        document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true });
 
         // Pan functionality (touch and mouse)
 let isPanning = false;
@@ -82,19 +120,120 @@ let isPanning = false;
         let lastPointerX = 0;
         let lastPointerY = 0;
         let lastPointerTime = 0;
+        let pinchActive = false;
+        let pinchStartDistance = 0;
+        let pinchStartZoom = this.currentZoom;
+        let lastTouchEndTime = 0;
+        const doubleTapThresholdMs = 350;
+        const velocityConfig = {
+            max: 0.75,
+            smoothing: 0.22,
+            flickMultiplier: 1.1,
+            flickWindowMs: 35,
+            flickMax: 0.9
+        };
+        const TOUCH_PAN_MULTIPLIER = 1.4;
+        let panInputType = 'mouse';
+        let currentPanMultiplier = 1;
+
+        const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+        const getTouchDistance = (touchA, touchB) => {
+            const dx = touchA.clientX - touchB.clientX;
+            const dy = touchA.clientY - touchB.clientY;
+            return Math.hypot(dx, dy);
+        };
+
+        const getTouchMidpoint = (touchA, touchB) => ({
+            x: (touchA.clientX + touchB.clientX) / 2,
+            y: (touchA.clientY + touchB.clientY) / 2
+        });
+
+        const updatePanForPinch = (targetZoom, centerClientX, centerClientY) => {
+            const rect = this.svg.getBoundingClientRect();
+            if (!rect || rect.width === 0 || rect.height === 0) {
+                this.currentZoom = targetZoom;
+                this.updateViewBox();
+                return;
+            }
+
+            const { x: viewX, y: viewY, width: viewWidth, height: viewHeight } = this.getViewBox();
+            const fractionX = clamp((centerClientX - rect.left) / rect.width, 0, 1);
+            const fractionY = clamp((centerClientY - rect.top) / rect.height, 0, 1);
+
+            const mapCenterX = viewX + viewWidth * fractionX;
+            const mapCenterY = viewY + viewHeight * fractionY;
+
+            const nextViewWidth = this.baseWidth / targetZoom;
+            const nextViewHeight = this.baseHeight / targetZoom;
+
+            const minViewX = 0;
+            const minViewY = 0;
+            const maxViewX = Math.max(minViewX, this.baseWidth - nextViewWidth);
+            const maxViewY = Math.max(minViewY, this.baseHeight - nextViewHeight);
+
+            const desiredViewX = mapCenterX - fractionX * nextViewWidth;
+            const desiredViewY = mapCenterY - fractionY * nextViewHeight;
+
+            const clampedViewX = clamp(desiredViewX, minViewX, maxViewX);
+            const clampedViewY = clamp(desiredViewY, minViewY, maxViewY);
+
+            this.currentZoom = targetZoom;
+            this.panX = (this.baseWidth - nextViewWidth) / 2 - clampedViewX;
+            this.panY = (this.baseHeight - nextViewHeight) / 2 - clampedViewY;
+            this.updateViewBox();
+        };
+
+        const startPinch = (touches) => {
+            if (!touches || touches.length < 2) {
+                return;
+            }
+
+            this.stopPanInertia(true);
+            this.stopPanAnimation();
+            isPanning = false;
+            pinchActive = true;
+            pinchStartDistance = getTouchDistance(touches[0], touches[1]) || 0.0001;
+            pinchStartZoom = this.currentZoom;
+            this.isMultiTouchGesture = true;
+        };
+
+        const resetPinchState = () => {
+            pinchActive = false;
+            pinchStartDistance = 0;
+            pinchStartZoom = this.currentZoom;
+            this.isMultiTouchGesture = false;
+        };
+
+        const handlePinchMove = (touches) => {
+            if (!pinchActive || !touches || touches.length < 2 || pinchStartDistance === 0) {
+                return;
+            }
+
+            const distance = getTouchDistance(touches[0], touches[1]);
+            if (!distance) {
+                return;
+            }
+
+            const midpoint = getTouchMidpoint(touches[0], touches[1]);
+            const scale = distance / pinchStartDistance;
+            const targetZoom = clamp(pinchStartZoom * scale, this.minZoom, this.maxZoom);
+            updatePanForPinch(targetZoom, midpoint.x, midpoint.y);
+        };
 
         const recordVelocity = (clientX, clientY) => {
             const now = performance.now();
             if (lastPointerTime) {
                 const deltaTime = now - lastPointerTime;
                 if (deltaTime > 0) {
-                    const deltaPanX = (clientX - lastPointerX) / this.currentZoom;
-                    const deltaPanY = (clientY - lastPointerY) / this.currentZoom;
+                    const appliedMultiplier = this.getPanSpeedMultiplier() * currentPanMultiplier;
+                    const deltaPanX = ((clientX - lastPointerX) / this.currentZoom) * appliedMultiplier;
+                    const deltaPanY = ((clientY - lastPointerY) / this.currentZoom) * appliedMultiplier;
                     const vx = deltaPanX / deltaTime;
                     const vy = deltaPanY / deltaTime;
-                    const maxVelocity = 0.5;
-                    this.panVelocityX = Math.max(-maxVelocity, Math.min(maxVelocity, vx));
-                    this.panVelocityY = Math.max(-maxVelocity, Math.min(maxVelocity, vy));
+                    const { max, smoothing } = velocityConfig;
+                    this.panVelocityX = (1 - smoothing) * this.panVelocityX + smoothing * Math.max(-max, Math.min(max, vx));
+                    this.panVelocityY = (1 - smoothing) * this.panVelocityY + smoothing * Math.max(-max, Math.min(max, vy));
                 }
             }
             lastPointerX = clientX;
@@ -102,8 +241,10 @@ let isPanning = false;
             lastPointerTime = now;
         };
 
-        const beginPan = (clientX, clientY) => {
+        const beginPan = (clientX, clientY, inputType = 'mouse') => {
             isPanning = true;
+            panInputType = inputType;
+            currentPanMultiplier = panInputType === 'touch' ? TOUCH_PAN_MULTIPLIER : 1;
             startX = clientX;
             startY = clientY;
             initialPanX = this.panX;
@@ -118,21 +259,33 @@ let isPanning = false;
         };
 
         const updatePan = (clientX, clientY) => {
-            const dx = (clientX - startX) / this.currentZoom;
-            const dy = (clientY - startY) / this.currentZoom;
+            const appliedMultiplier = this.getPanSpeedMultiplier() * currentPanMultiplier;
+            const dx = ((clientX - startX) / this.currentZoom) * appliedMultiplier;
+            const dy = ((clientY - startY) / this.currentZoom) * appliedMultiplier;
             this.panX = initialPanX + dx;
             this.panY = initialPanY + dy;
             this.updateViewBox();
             recordVelocity(clientX, clientY);
         };
 
-        const endPan = () => {
+        const endPan = (options = {}) => {
             if (!isPanning) {
                 return;
             }
             isPanning = false;
+            panInputType = 'mouse';
+            currentPanMultiplier = 1;
             this.svg.style.cursor = 'grab';
-            this.startPanInertia();
+            if (!options.skipInertia) {
+                const sinceLastSample = lastPointerTime ? performance.now() - lastPointerTime : Infinity;
+                if (sinceLastSample <= velocityConfig.flickWindowMs) {
+                    const boost = velocityConfig.flickMultiplier;
+                    const maxBoosted = velocityConfig.flickMax;
+                    this.panVelocityX = Math.max(-maxBoosted, Math.min(maxBoosted, this.panVelocityX * boost));
+                    this.panVelocityY = Math.max(-maxBoosted, Math.min(maxBoosted, this.panVelocityY * boost));
+                }
+                this.startPanInertia();
+            }
         };
 
         this.svg.style.cursor = 'grab';
@@ -141,10 +294,11 @@ let isPanning = false;
             const isInteractiveElement = e.target.closest('[data-side]') || 
                                        e.target.closest('.color-marker') ||
                                        e.target.closest('[data-point-id]') ||
-                                       e.target.classList.contains('color-marker');
+                                       e.target.classList.contains('color-marker') ||
+                                       e.target.closest('#tablePanel');
             if (!isInteractiveElement) {
                 e.preventDefault();
-                beginPan(e.clientX, e.clientY);
+                beginPan(e.clientX, e.clientY, 'mouse');
             }
         });
 
@@ -169,15 +323,38 @@ let isPanning = false;
 
         // Touch support
         const touchStartHandler = (e) => {
-            const touch = e.touches[0];
+            const touches = e.touches;
+            const touchCount = touches ? touches.length : 0;
+
+            if (touchCount >= 2) {
+                e.preventDefault();
+                this.isMultiTouchGesture = true;
+                startPinch(touches);
+                this.svg.style.cursor = 'grab';
+                return;
+            }
+
+            if (touchCount !== 1) {
+                return;
+            }
+
+            const touch = touches[0];
             const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (touchTarget && touchTarget.closest('#tablePanel')) {
+                this.stopPanInertia(true);
+                isPanning = false;
+                return;
+            }
+
             const isInteractiveElement = touchTarget?.closest('[data-side]') || 
                                        touchTarget?.closest('.color-marker') ||
                                        touchTarget?.closest('[data-point-id]') ||
                                        touchTarget?.classList.contains('color-marker');
             if (!isInteractiveElement) {
                 e.preventDefault();
-                beginPan(touch.clientX, touch.clientY);
+                resetPinchState();
+                beginPan(touch.clientX, touch.clientY, 'touch');
             }
         };
 
@@ -188,11 +365,48 @@ let isPanning = false;
         }
 
         const touchMoveHandler = (e) => {
-            if (!isPanning || e.touches.length !== 1) {
+            const touches = e.touches;
+            const touchCount = touches ? touches.length : 0;
+
+            if (touchCount >= 2) {
+                if (!pinchActive) {
+                    startPinch(touches);
+                }
+                this.isMultiTouchGesture = true;
+                e.preventDefault();
+                handlePinchMove(touches);
                 return;
             }
+
+            if (pinchActive && touchCount < 2) {
+                resetPinchState();
+            }
+
+            if (touchCount !== 1) {
+                if (isPanning) {
+                    this.stopPanInertia(true);
+                    this.stopPanAnimation();
+                    endPan({ skipInertia: true });
+                }
+                return;
+            }
+
+            const touch = touches[0];
+            const moveTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (moveTarget && moveTarget.closest('#tablePanel')) {
+                if (isPanning) {
+                    this.stopPanInertia(true);
+                    this.stopPanAnimation();
+                    endPan({ skipInertia: true });
+                }
+                return;
+            }
+
+            if (!isPanning) {
+                return;
+            }
+
             e.preventDefault();
-            const touch = e.touches[0];
             updatePan(touch.clientX, touch.clientY);
         };
 
@@ -202,9 +416,72 @@ let isPanning = false;
             document.addEventListener('touchmove', touchMoveHandler);
         }
 
-        document.addEventListener('touchend', (e) => {
-            if (e.touches.length === 0) {
+        const handleTouchEnd = (e) => {
+            const touches = e.touches;
+            const touchCount = touches ? touches.length : 0;
+            const now = Date.now();
+            const changedTouchCount = e.changedTouches ? e.changedTouches.length : 0;
+            const endedAllTouches = touchCount === 0;
+            const isSingleFingerRelease = !pinchActive && endedAllTouches && changedTouchCount === 1;
+
+            if (isSingleFingerRelease) {
+                if (now - lastTouchEndTime <= doubleTapThresholdMs) {
+                    e.preventDefault();
+                }
+                lastTouchEndTime = now;
+            } else if (endedAllTouches) {
+                lastTouchEndTime = now;
+            }
+
+            if (pinchActive && touchCount < 2) {
+                resetPinchState();
+                if (touchCount === 1) {
+                    const remainingTouch = touches[0];
+                    const remainingTarget = document.elementFromPoint(remainingTouch.clientX, remainingTouch.clientY);
+                    if (remainingTarget && remainingTarget.closest('#tablePanel')) {
+                        this.stopPanInertia(true);
+                        isPanning = false;
+                        return;
+                    }
+
+                    const isInteractiveElement = remainingTarget?.closest('[data-side]') ||
+                                                remainingTarget?.closest('.color-marker') ||
+                                                remainingTarget?.closest('[data-point-id]') ||
+                                                remainingTarget?.classList?.contains('color-marker');
+
+                    if (!isInteractiveElement) {
+                        beginPan(remainingTouch.clientX, remainingTouch.clientY, 'touch');
+                    }
+                }
+            }
+
+            if (endedAllTouches) {
+                this.isMultiTouchGesture = false;
                 endPan();
+            }
+        };
+
+        try {
+            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+        } catch (err) {
+            document.addEventListener('touchend', handleTouchEnd);
+        }
+
+        try {
+            document.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+        } catch (err) {
+            document.addEventListener('touchcancel', handleTouchEnd);
+        }
+
+        const preventGestureZoom = (event) => {
+            event.preventDefault();
+        };
+
+        ['gesturestart', 'gesturechange', 'gestureend'].forEach((eventName) => {
+            try {
+                document.addEventListener(eventName, preventGestureZoom, { passive: false });
+            } catch (err) {
+                document.addEventListener(eventName, preventGestureZoom);
             }
         });
 
@@ -229,10 +506,19 @@ let isPanning = false;
             if (e.target.classList.contains('poster-area')) {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    this.selectArea(e.target.dataset.areaId);
+                    this.selectArea(e.target.dataset.areaId, { interactionType: 'keyboard' });
                 }
             }
         });
+    }
+
+    getPanSpeedMultiplier() {
+        const zoomRange = Math.max(this.maxZoom - this.minZoom, 0.0001);
+        const normalized = (this.currentZoom - this.minZoom) / zoomRange;
+        const minMultiplier = 1;
+        const maxMultiplier = 3;
+
+        return minMultiplier + normalized * (maxMultiplier - minMultiplier);
     }
 
     renderMap() {
@@ -285,10 +571,10 @@ let isPanning = false;
             label.textContent = area.name;
 
             // Event listeners
-            shape.addEventListener('click', () => this.selectArea(area.id));
+            shape.addEventListener('click', () => this.selectArea(area.id, { interactionType: 'mouse' }));
             shape.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                this.selectArea(area.id);
+                this.selectArea(area.id, { interactionType: 'touch' });
             });
 
             group.appendChild(shape);
@@ -302,7 +588,25 @@ let isPanning = false;
         this.markersGroup.innerHTML = '';
     }
 
-    selectArea(areaId) {
+    selectArea(areaId, options = {}) {
+        const { interactionType = 'mouse' } = options;
+        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+
+        if (this.lastClosedAreaId === areaId) {
+            if (this.lastClosedInteractionType === 'touch' && (now - this.lastClosedTime) < 350) {
+                return;
+            }
+            this.lastClosedAreaId = null;
+            this.lastClosedInteractionType = null;
+        }
+
+        if (this.selectedArea && this.selectedArea.id === areaId && this.infoPanel?.classList.contains('active')) {
+            this.hideInfo();
+            this.lastClosedAreaId = areaId;
+            this.lastClosedTime = now;
+            this.lastClosedInteractionType = interactionType;
+            return;
+        }
         // Clear previous selection
         document.querySelectorAll('.poster-area').forEach(area => {
             area.classList.remove('selected');
@@ -316,11 +620,16 @@ let isPanning = false;
             areaElement.focus();
 
             this.selectedArea = area;
-            this.showAreaInfo(area);
+            this.showAreaInfo(area, interactionType);
         }
     }
 
-    showAreaInfo(area) {
+    showAreaInfo(area, interactionType = 'mouse') {
+        if (this.infoAutoHideTimer) {
+            clearTimeout(this.infoAutoHideTimer);
+            this.infoAutoHideTimer = null;
+        }
+
         this.infoTitle.textContent = area.name;
         this.infoDescription.innerHTML = `
             <p><strong>Focus:</strong> ${area.description}</p>
@@ -329,12 +638,14 @@ let isPanning = false;
         `;
         this.infoPanel.classList.add('active');
 
-        // Auto-hide after 10 seconds
-        setTimeout(() => {
-            if (this.infoPanel.classList.contains('active')) {
-                this.hideInfo();
-            }
-        }, 10000);
+        // Auto-hide after 10 seconds except for touch interactions
+        if (interactionType !== 'touch') {
+            this.infoAutoHideTimer = setTimeout(() => {
+                if (this.infoPanel.classList.contains('active')) {
+                    this.hideInfo();
+                }
+            }, 10000);
+        }
     }
 
     // Marker info functionality disabled
@@ -344,6 +655,14 @@ let isPanning = false;
     }
 
     hideInfo() {
+        if (this.infoAutoHideTimer) {
+            clearTimeout(this.infoAutoHideTimer);
+            this.infoAutoHideTimer = null;
+        }
+        if (window.posterInfoTimer) {
+            clearTimeout(window.posterInfoTimer);
+            window.posterInfoTimer = null;
+        }
         this.infoPanel.classList.remove('active');
         if (this.selectedArea) {
             document.querySelectorAll('.poster-area').forEach(area => {
@@ -387,40 +706,7 @@ let isPanning = false;
 
         this.isFullScreen = shouldEnable;
         document.body.classList.toggle('map-fullscreen', this.isFullScreen);
-        this.setTableOpen(false);
         this.updateFullScreenUI();
-    }
-
-    toggleTable(forceOpen) {
-        const desiredState = typeof forceOpen === 'boolean' ? forceOpen : !this.isTableOpen;
-        this.setTableOpen(desiredState);
-    }
-
-    setTableOpen(shouldOpen) {
-        const normalized = Boolean(shouldOpen);
-
-        if (!this.isFullScreen) {
-            this.isTableOpen = false;
-            document.body.classList.remove('map-table-open');
-            this.updateTableToggleUI();
-            this.releaseTemporaryTableFocus();
-            return;
-        }
-
-        if (normalized === this.isTableOpen) {
-            this.updateTableToggleUI();
-            return;
-        }
-
-        this.isTableOpen = normalized;
-        document.body.classList.toggle('map-table-open', this.isTableOpen);
-        this.updateTableToggleUI();
-
-        if (this.isTableOpen) {
-            this.focusTablePanel();
-        } else {
-            this.releaseTemporaryTableFocus();
-        }
     }
 
     updateFullScreenUI() {
@@ -429,68 +715,21 @@ let isPanning = false;
             this.fullscreenBtn.setAttribute('aria-pressed', pressed);
             this.fullscreenBtn.setAttribute('aria-label', this.isFullScreen ? 'Exit full screen view' : 'View map full screen');
             this.fullscreenBtn.setAttribute('title', this.isFullScreen ? 'Exit Full Screen' : 'Full Screen Map');
-        }
-
-        if (!this.isFullScreen) {
-            this.releaseTemporaryTableFocus();
-        }
-
-        this.updateTableToggleUI();
-    }
-
-    updateTableToggleUI() {
-        if (!this.tableToggleBtn) {
-            return;
-        }
-
-        const expanded = this.isFullScreen && this.isTableOpen;
-        this.tableToggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-        this.tableToggleBtn.setAttribute('aria-label', expanded ? 'Hide poster table' : 'Show poster table');
-        this.tableToggleBtn.setAttribute('title', expanded ? 'Hide poster table' : 'Show poster table');
-        this.tableToggleBtn.textContent = expanded ? 'Hide Table' : 'Show Table';
-    }
-
-    focusTablePanel() {
-        if (!this.tablePanel) {
-            return;
-        }
-
-        const hadTabIndex = this.tablePanel.hasAttribute('tabindex');
-        if (!hadTabIndex) {
-            this.tablePanel.setAttribute('tabindex', '-1');
-            this.tablePanel.dataset.tempTabindex = 'true';
-        }
-
-        try {
-            this.tablePanel.focus({ preventScroll: true });
-        } catch (err) {
-            this.tablePanel.focus();
-        }
-
-        if (!hadTabIndex) {
-            requestAnimationFrame(() => {
-                this.releaseTemporaryTableFocus();
-            });
+            this.fullscreenBtn.innerHTML = this.isFullScreen ? this.fullscreenExitIcon : this.fullscreenEnterIcon;
         }
     }
 
-    releaseTemporaryTableFocus() {
-        if (!this.tablePanel) {
-            return;
-        }
-
-        if (this.tablePanel.dataset && this.tablePanel.dataset.tempTabindex === 'true') {
-            this.tablePanel.removeAttribute('tabindex');
-            delete this.tablePanel.dataset.tempTabindex;
-        }
-    }
-
-    updateViewBox() {
+    getViewBox() {
         const width = this.baseWidth / this.currentZoom;
         const height = this.baseHeight / this.currentZoom;
         const x = -this.panX + (this.baseWidth - width) / 2;
         const y = -this.panY + (this.baseHeight - height) / 2;
 
+        return { x, y, width, height };
+    }
+
+    updateViewBox() {
+        const { x, y, width, height } = this.getViewBox();
         this.svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
     }
 
@@ -591,7 +830,7 @@ let isPanning = false;
     }
 
     startPanInertia() {
-        const minVelocity = 0.002;
+        const minVelocity = 0.0012;
         const currentVelocity = Math.hypot(this.panVelocityX, this.panVelocityY);
         if (currentVelocity < minVelocity) {
             this.stopPanInertia(true);
@@ -600,7 +839,7 @@ let isPanning = false;
 
         this.stopPanInertia();
 
-        const decay = 0.92;
+        const decay = 0.93;
         let lastTime = performance.now();
 
         const step = (time) => {
@@ -650,9 +889,182 @@ let isPanning = false;
 // Make the class available globally
 window.PosterSessionMap = PosterSessionMap;
 
+function initializeMobileTableScrollFix() {
+    const tablePanel = document.getElementById('tablePanel');
+    if (!tablePanel) {
+        return;
+    }
+
+    const tableWrapper = tablePanel.querySelector('.table-responsive');
+    if (!tableWrapper) {
+        return;
+    }
+
+    tableWrapper.addEventListener('touchstart', (ev) => {
+        ev.stopPropagation();
+    }, { passive: true });
+
+    tableWrapper.addEventListener('touchmove', (ev) => {
+        ev.stopPropagation();
+    }, { passive: false });
+
+    const mobileQuery = window.matchMedia('(max-width: 768px)');
+    const ensureManualTouchScroll = () => {
+        if (!mobileQuery.matches) {
+            return;
+        }
+
+        if (tableWrapper.dataset.manualTouchScroll === 'true') {
+            return;
+        }
+
+        let lastY = null;
+
+        const onTouchStart = (event) => {
+            if (event.touches.length !== 1) {
+                lastY = null;
+                return;
+            }
+            lastY = event.touches[0].clientY;
+        };
+
+        const onTouchMove = (event) => {
+            if (event.touches.length !== 1 || lastY === null) {
+                return;
+            }
+
+            const currentY = event.touches[0].clientY;
+            const deltaY = lastY - currentY;
+
+            if (Math.abs(deltaY) < 0.5) {
+                return;
+            }
+
+            const previousScrollTop = tableWrapper.scrollTop;
+            tableWrapper.scrollTop += deltaY;
+            const scrolled = tableWrapper.scrollTop !== previousScrollTop;
+
+            if (scrolled) {
+                event.preventDefault();
+            }
+
+            lastY = currentY;
+        };
+
+        const onTouchEnd = () => {
+            lastY = null;
+        };
+
+        tableWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+        tableWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
+        tableWrapper.addEventListener('touchend', onTouchEnd);
+        tableWrapper.addEventListener('touchcancel', onTouchEnd);
+
+        tableWrapper.dataset.manualTouchScroll = 'true';
+    };
+
+    let scheduled = false;
+    let lastHeight = null;
+
+    const computeHeight = () => {
+        if (!mobileQuery.matches) {
+            lastHeight = null;
+            tableWrapper.style.removeProperty('--table-scroll-max-height');
+            tableWrapper.style.removeProperty('height');
+            tableWrapper.style.removeProperty('max-height');
+            return;
+        }
+
+        const isFullscreen = document.body.classList.contains('map-fullscreen');
+
+        if (isFullscreen) {
+            if (lastHeight !== null) {
+                tableWrapper.style.setProperty('--table-scroll-max-height', `${lastHeight}px`);
+                tableWrapper.style.height = `${lastHeight}px`;
+                tableWrapper.style.maxHeight = `${lastHeight}px`;
+            }
+            return;
+        }
+
+        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        const tableRect = tableWrapper.getBoundingClientRect();
+        const marginBottom = 12;
+        const minHeight = 180;
+        const available = viewportHeight - tableRect.top - marginBottom;
+
+        if (!Number.isFinite(available)) {
+            return;
+        }
+
+        const nextHeight = Math.max(minHeight, Math.floor(available));
+
+        if (nextHeight === lastHeight) {
+            return;
+        }
+
+        lastHeight = nextHeight;
+        const heightValue = `${nextHeight}px`;
+        tableWrapper.style.setProperty('--table-scroll-max-height', heightValue);
+        tableWrapper.style.height = heightValue;
+        tableWrapper.style.maxHeight = heightValue;
+    };
+
+    const scheduleUpdate = () => {
+        if (scheduled) {
+            return;
+        }
+        scheduled = true;
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                scheduled = false;
+                computeHeight();
+                ensureManualTouchScroll();
+            });
+        });
+    };
+
+    const attachMediaListener = () => {
+        if (typeof mobileQuery.addEventListener === 'function') {
+            mobileQuery.addEventListener('change', scheduleUpdate);
+        } else if (typeof mobileQuery.addListener === 'function') {
+            mobileQuery.addListener(scheduleUpdate);
+        }
+    };
+
+    attachMediaListener();
+
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('orientationchange', scheduleUpdate);
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleUpdate);
+        window.visualViewport.addEventListener('scroll', scheduleUpdate);
+    }
+
+    const classObserver = new MutationObserver(scheduleUpdate);
+    classObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    tablePanel.addEventListener('transitionend', (event) => {
+        if (event.target === tablePanel) {
+            scheduleUpdate();
+        }
+    });
+
+    if (typeof ResizeObserver === 'function') {
+        const resizeObserver = new ResizeObserver(() => {
+            scheduleUpdate();
+        });
+        resizeObserver.observe(tablePanel);
+    }
+
+    ensureManualTouchScroll();
+    scheduleUpdate();
+}
+
 // Initialize the map when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.posterMap = new PosterSessionMap();
+    initializeMobileTableScrollFix();
 });
 
 // Export for potential external use

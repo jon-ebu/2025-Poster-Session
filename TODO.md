@@ -1,8 +1,8 @@
 # Table
 [] Incorporate Sort by category toggle
 [] Fix vertical scroll on mobile (continuously having problems)
-[] Include an option to view table full screen (table becomes a footer that can be reopened)
-[] When selecting a row, have map pan so that marker is centered.
+[X] Include an option to view table full screen (table becomes a footer that can be reopened)
+[X] When selecting a row, have map pan so that marker is centered.
 
 # Map
 [X] Click within map to hide info pane/unselect row
@@ -16,7 +16,7 @@
 [X] Ensure Tooltips are on Z-index over Controls.
 [] Increase length of tooltip arrow and have it look good (don't look disjointed, look like it's organically coming from tooltip bubble)
 [X] Update Easel Board in Tooltip to be in a colored pill like how the markers are 
-
+[ ] Something is wrong with extracting Category from TSV. The header is "Poster Category" in the TSV. is missing in info pane tooltip. Shows N/A instead.
 # Markers
 [X] When marker is focused on, fade the marker it shares the mount with
 [X] Fix bug when marker is focused on it stays in an increased size when unfocused/unselected. It should return to normal size after some point.
@@ -27,7 +27,7 @@
 [X] HC-1 - add easel board icon
 
 # Search
-[] When there is only one result, automatically highlight the result after a small buffer window
+[X] When there is only one result, automatically highlight the result after a small buffer window
 
 Some restrictions:
 - Mobile first app. Text should be relatively easy to read on mobile.
