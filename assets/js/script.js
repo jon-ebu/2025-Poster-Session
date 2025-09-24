@@ -26,8 +26,10 @@ class PosterSessionMap {
         this.currentZoom = 1;
         this.minZoom = 1;
         this.maxZoom = 8;
-        this.panX = 0;
-        this.panY = 0;
+        this.defaultPanX = -60; // Shift initial view slightly left so controls don't cover content
+        this.defaultPanY = 0;
+        this.panX = this.defaultPanX;
+        this.panY = this.defaultPanY;
         this.panVelocityX = 0;
         this.panVelocityY = 0;
         this.panInertiaFrame = null;
@@ -48,6 +50,7 @@ class PosterSessionMap {
         this.initializeEventListeners();
         this.updateFullScreenUI();
         this.renderMap();
+        this.updateViewBox();
     }
 
     initializeData() {
@@ -72,6 +75,10 @@ class PosterSessionMap {
 
         document.addEventListener('keydown', this.handleGlobalKeydown);
 
+        const getClosest = (element, selector) => {
+            return element ? element.closest(selector) : null;
+        };
+
         const handleGlobalTouchStart = (event) => {
             if (!event || !event.touches) {
                 return;
@@ -86,19 +93,19 @@ class PosterSessionMap {
                 return;
             }
 
-            const touchedMarker = touchTarget.closest('[data-side]') ||
-                                  touchTarget.closest('.color-marker');
+            const touchedMarker = getClosest(touchTarget, '[data-side]') ||
+                                  getClosest(touchTarget, '.color-marker');
             if (touchedMarker) {
                 return;
             }
 
-            const touchedPosterArea = touchTarget.closest('.poster-area') ||
-                                      touchTarget.closest('[data-area-id]');
+            const touchedPosterArea = getClosest(touchTarget, '.poster-area') ||
+                                      getClosest(touchTarget, '[data-area-id]');
             if (touchedPosterArea) {
                 return;
             }
 
-            const touchedInfoPanel = touchTarget.closest('.info-panel');
+            const touchedInfoPanel = getClosest(touchTarget, '.info-panel');
             if (touchedInfoPanel) {
                 return;
             }
@@ -107,6 +114,25 @@ class PosterSessionMap {
         };
 
         document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true });
+
+        if (this.infoPanel) {
+            const closeInfoOnPanelInteraction = (event) => {
+                if (!this.infoPanel.classList.contains('active')) {
+                    return;
+                }
+                event.stopPropagation();
+                this.hideInfo();
+            };
+
+            if (window.PointerEvent) {
+                this.infoPanel.addEventListener('pointerdown', closeInfoOnPanelInteraction);
+            } else {
+                this.infoPanel.addEventListener('touchstart', closeInfoOnPanelInteraction, { passive: true });
+                this.infoPanel.addEventListener('mousedown', closeInfoOnPanelInteraction);
+            }
+
+            this.infoPanel.addEventListener('click', closeInfoOnPanelInteraction);
+        }
 
         // Pan functionality (touch and mouse)
 let isPanning = false;
@@ -211,7 +237,8 @@ let isPanning = false;
 
             const midpoint = getTouchMidpoint(touches[0], touches[1]);
             const scale = distance / pinchStartDistance;
-            const targetZoom = clamp(pinchStartZoom * scale, this.minZoom, this.maxZoom);
+            const adjustedScale = 1 + (scale - 1) * 2;
+            const targetZoom = clamp(pinchStartZoom * adjustedScale, this.minZoom, this.maxZoom);
             updatePanForPinch(targetZoom, midpoint.x, midpoint.y);
         };
 
@@ -341,10 +368,10 @@ let isPanning = false;
                 return;
             }
 
-            const isInteractiveElement = touchTarget?.closest('[data-side]') || 
-                                       touchTarget?.closest('.color-marker') ||
-                                       touchTarget?.closest('[data-point-id]') ||
-                                       touchTarget?.classList.contains('color-marker');
+            const isInteractiveElement = getClosest(touchTarget, '[data-side]') ||
+                                       getClosest(touchTarget, '.color-marker') ||
+                                       getClosest(touchTarget, '[data-point-id]') ||
+                                       (touchTarget && touchTarget.classList && touchTarget.classList.contains('color-marker'));
             if (!isInteractiveElement) {
                 e.preventDefault();
                 resetPinchState();
@@ -438,10 +465,10 @@ let isPanning = false;
                         return;
                     }
 
-                    const isInteractiveElement = remainingTarget?.closest('[data-side]') ||
-                                                remainingTarget?.closest('.color-marker') ||
-                                                remainingTarget?.closest('[data-point-id]') ||
-                                                remainingTarget?.classList?.contains('color-marker');
+                    const isInteractiveElement = getClosest(remainingTarget, '[data-side]') ||
+                                                getClosest(remainingTarget, '.color-marker') ||
+                                                getClosest(remainingTarget, '[data-point-id]') ||
+                                                (remainingTarget && remainingTarget.classList && remainingTarget.classList.contains('color-marker'));
 
                     if (!isInteractiveElement) {
                         beginPan(remainingTouch.clientX, remainingTouch.clientY, 'touch');
@@ -494,6 +521,7 @@ let isPanning = false;
             // Dial desktop trackpad pinch separate from regular wheel scrolling with adaptive gain
             const WHEEL_INTENSITY = 0.0012;
             const PINCH_BASE_INTENSITY = 0.0035;
+            const PINCH_GAIN = 2;
 
             let intensity = WHEEL_INTENSITY;
 
@@ -504,7 +532,7 @@ let isPanning = false;
                 const zoomNormalized = (this.currentZoom - this.minZoom) / zoomRange;
                 const zoomFactor = 0.9 + zoomNormalized * 1.2; // 0.9 → 2.1 range based on current zoom
 
-                intensity = PINCH_BASE_INTENSITY * deltaFactor * zoomFactor;
+                intensity = PINCH_BASE_INTENSITY * PINCH_GAIN * deltaFactor * zoomFactor;
             }
             const zoomFactor = Math.exp(-normalizedDelta * intensity);
             const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.currentZoom * zoomFactor));
@@ -614,7 +642,7 @@ let isPanning = false;
             this.lastClosedInteractionType = null;
         }
 
-        if (this.selectedArea && this.selectedArea.id === areaId && this.infoPanel?.classList.contains('active')) {
+        if (this.selectedArea && this.selectedArea.id === areaId && this.infoPanel && this.infoPanel.classList && this.infoPanel.classList.contains('active')) {
             this.hideInfo();
             this.lastClosedAreaId = areaId;
             this.lastClosedTime = now;
@@ -703,12 +731,12 @@ let isPanning = false;
 
     resetView() {
         this.stopPanInertia(true);
-       this.stopPanAnimation();
-       this.currentZoom = 1;
-       this.panX = 0;
-       this.panY = 0;
-       this.updateViewBox();
-       this.hideInfo();
+        this.stopPanAnimation();
+        this.currentZoom = 1;
+        this.panX = this.defaultPanX;
+        this.panY = this.defaultPanY;
+        this.updateViewBox();
+        this.hideInfo();
     }
 
     toggleFullScreen(forceState) {
@@ -770,12 +798,25 @@ let isPanning = false;
             return;
         }
 
-        const { animate = true, duration = 300, onComplete } = options;
+        const { animate = true, duration = 300, onComplete, minZoom, focus } = options;
+
+        const mobileQuery = typeof window !== 'undefined'
+            ? window.matchMedia('(max-width: 768px)')
+            : null;
+        if (typeof minZoom === 'number' && Number.isFinite(minZoom)) {
+            this.currentZoom = Math.min(this.maxZoom, Math.max(this.currentZoom, minZoom));
+        } else if (mobileQuery && mobileQuery.matches) {
+            const defaultMobileFocusZoom = 2.1;
+            if (this.currentZoom < defaultMobileFocusZoom) {
+                this.currentZoom = Math.min(this.maxZoom, defaultMobileFocusZoom);
+            }
+        }
 
         this.stopPanInertia(true);
         this.stopPanAnimation();
 
-        const targetPan = this.calculatePanForCoordinates(x, y);
+        // Allow callers to bias where the target coordinate sits within the viewport (e.g., mobile left offset)
+        const targetPan = this.calculatePanForCoordinates(x, y, focus);
 
         if (animate && duration > 0) {
             this.animatePan(targetPan.panX, targetPan.panY, duration, onComplete);
@@ -789,7 +830,8 @@ let isPanning = false;
         }
     }
 
-    calculatePanForCoordinates(x, y) {
+    calculatePanForCoordinates(x, y, focus = {}) {
+        const focusConfig = (focus && typeof focus === 'object') ? focus : {};
         const width = this.baseWidth / this.currentZoom;
         const height = this.baseHeight / this.currentZoom;
 
@@ -798,8 +840,18 @@ let isPanning = false;
         const maxX = Math.max(minX, this.baseWidth - width);
         const maxY = Math.max(minY, this.baseHeight - height);
 
-        const desiredX = x - width / 2;
-        const desiredY = y - height / 2;
+        const clampFraction = (value) => {
+            if (!Number.isFinite(value)) {
+                return 0.5;
+            }
+            return Math.min(Math.max(value, 0), 1);
+        };
+
+        const focusX = clampFraction(typeof focusConfig.x === 'number' ? focusConfig.x : 0.5);
+        const focusY = clampFraction(typeof focusConfig.y === 'number' ? focusConfig.y : 0.5);
+
+        const desiredX = x - width * focusX;
+        const desiredY = y - height * focusY;
 
         const clampedX = Math.min(Math.max(desiredX, minX), maxX);
         const clampedY = Math.min(Math.max(desiredY, minY), maxY);
@@ -930,61 +982,21 @@ function initializeMobileTableScrollFix() {
 
     tableWrapper.addEventListener('touchmove', (ev) => {
         ev.stopPropagation();
-    }, { passive: false });
+    }, { passive: true });
 
-    const mobileQuery = window.matchMedia('(max-width: 768px)');
-    const ensureManualTouchScroll = () => {
+    const mobileQuery = window.matchMedia('(max-width: 900px), (max-height: 600px) and (orientation: landscape)');
+    const ensureMomentumScroll = () => {
         if (!mobileQuery.matches) {
             return;
         }
 
-        if (tableWrapper.dataset.manualTouchScroll === 'true') {
+        if (tableWrapper.dataset.momentumScrollEnabled === 'true') {
             return;
         }
 
-        let lastY = null;
-
-        const onTouchStart = (event) => {
-            if (event.touches.length !== 1) {
-                lastY = null;
-                return;
-            }
-            lastY = event.touches[0].clientY;
-        };
-
-        const onTouchMove = (event) => {
-            if (event.touches.length !== 1 || lastY === null) {
-                return;
-            }
-
-            const currentY = event.touches[0].clientY;
-            const deltaY = lastY - currentY;
-
-            if (Math.abs(deltaY) < 0.5) {
-                return;
-            }
-
-            const previousScrollTop = tableWrapper.scrollTop;
-            tableWrapper.scrollTop += deltaY;
-            const scrolled = tableWrapper.scrollTop !== previousScrollTop;
-
-            if (scrolled) {
-                event.preventDefault();
-            }
-
-            lastY = currentY;
-        };
-
-        const onTouchEnd = () => {
-            lastY = null;
-        };
-
-        tableWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
-        tableWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
-        tableWrapper.addEventListener('touchend', onTouchEnd);
-        tableWrapper.addEventListener('touchcancel', onTouchEnd);
-
-        tableWrapper.dataset.manualTouchScroll = 'true';
+        tableWrapper.dataset.momentumScrollEnabled = 'true';
+        tableWrapper.style.setProperty('-webkit-overflow-scrolling', 'touch');
+        tableWrapper.style.setProperty('overscroll-behavior-y', 'contain');
     };
 
     let scheduled = false;
@@ -1004,8 +1016,6 @@ function initializeMobileTableScrollFix() {
         if (isFullscreen) {
             if (lastHeight !== null) {
                 tableWrapper.style.setProperty('--table-scroll-max-height', `${lastHeight}px`);
-                tableWrapper.style.height = `${lastHeight}px`;
-                tableWrapper.style.maxHeight = `${lastHeight}px`;
             }
             return;
         }
@@ -1029,8 +1039,6 @@ function initializeMobileTableScrollFix() {
         lastHeight = nextHeight;
         const heightValue = `${nextHeight}px`;
         tableWrapper.style.setProperty('--table-scroll-max-height', heightValue);
-        tableWrapper.style.height = heightValue;
-        tableWrapper.style.maxHeight = heightValue;
     };
 
     const scheduleUpdate = () => {
@@ -1042,7 +1050,7 @@ function initializeMobileTableScrollFix() {
             requestAnimationFrame(() => {
                 scheduled = false;
                 computeHeight();
-                ensureManualTouchScroll();
+                ensureMomentumScroll();
             });
         });
     };
@@ -1081,13 +1089,130 @@ function initializeMobileTableScrollFix() {
         resizeObserver.observe(tablePanel);
     }
 
-    ensureManualTouchScroll();
+    ensureMomentumScroll();
     scheduleUpdate();
+}
+
+function initializeTableOnlyToggle(mapInstance) {
+    const toggleBtn = document.getElementById('toggleTableView');
+    if (!toggleBtn) {
+        return;
+    }
+
+    const updateToggleState = () => {
+        const tableOnlyActive = document.body.classList.contains('table-only');
+        toggleBtn.setAttribute('aria-pressed', tableOnlyActive ? 'true' : 'false');
+        toggleBtn.setAttribute('aria-label', tableOnlyActive ? 'Show map with table' : 'View table only');
+        toggleBtn.textContent = tableOnlyActive ? 'Show Map & Table' : 'Table Only';
+        toggleBtn.title = tableOnlyActive ? 'Show map with table' : 'View table only';
+    };
+
+    const applyTableOnlyState = (nextState) => {
+        if (nextState && mapInstance && mapInstance.isFullScreen) {
+            mapInstance.toggleFullScreen(false);
+        }
+
+        document.body.classList.toggle('table-only', nextState);
+
+        if (mapInstance) {
+            if (typeof mapInstance.stopPanInertia === 'function') {
+                mapInstance.stopPanInertia(true);
+            }
+            if (typeof mapInstance.stopPanAnimation === 'function') {
+                mapInstance.stopPanAnimation();
+            }
+        }
+
+        updateToggleState();
+
+        requestAnimationFrame(() => {
+            window.dispatchEvent(new Event('resize'));
+        });
+    };
+
+    const handleToggle = () => {
+        const nextState = !document.body.classList.contains('table-only');
+        applyTableOnlyState(nextState);
+    };
+
+    let lastTouchToggle = 0;
+    let activeTouchPointerId = null;
+
+    const handleDirectToggle = (event) => {
+        lastTouchToggle = Date.now();
+        if (event && event.cancelable !== false) {
+            event.preventDefault();
+        }
+        handleToggle();
+    };
+
+    toggleBtn.addEventListener('click', (event) => {
+        if (Date.now() - lastTouchToggle < 350) {
+            return;
+        }
+        if (event && event.cancelable !== false) {
+            event.preventDefault();
+        }
+        handleToggle();
+    });
+
+    if ('PointerEvent' in window) {
+        toggleBtn.addEventListener('pointerdown', (event) => {
+            if (event.pointerType !== 'touch' && event.pointerType !== 'pen') {
+                return;
+            }
+            activeTouchPointerId = event.pointerId;
+            if (typeof toggleBtn.setPointerCapture === 'function' && typeof event.pointerId === 'number') {
+                try {
+                    toggleBtn.setPointerCapture(event.pointerId);
+                } catch (_) {
+                    // Ignore errors from pointer capture
+                }
+            }
+        });
+
+        toggleBtn.addEventListener('pointerup', (event) => {
+            const isTouchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
+            if (!isTouchLike || (activeTouchPointerId !== null && event.pointerId !== activeTouchPointerId)) {
+                return;
+            }
+            if (typeof toggleBtn.releasePointerCapture === 'function' && typeof event.pointerId === 'number') {
+                try {
+                    toggleBtn.releasePointerCapture(event.pointerId);
+                } catch (_) {
+                    // Ignore errors from pointer release
+                }
+            }
+            activeTouchPointerId = null;
+            handleDirectToggle(event);
+        });
+
+        toggleBtn.addEventListener('pointercancel', (event) => {
+            if (activeTouchPointerId !== null && event.pointerId === activeTouchPointerId) {
+                if (typeof toggleBtn.releasePointerCapture === 'function' && typeof event.pointerId === 'number') {
+                    try {
+                        toggleBtn.releasePointerCapture(event.pointerId);
+                    } catch (_) {
+                        // Ignore errors from pointer release
+                    }
+                }
+                activeTouchPointerId = null;
+            }
+        });
+    } else {
+        toggleBtn.addEventListener('touchend', handleDirectToggle, { passive: false });
+        toggleBtn.addEventListener('touchcancel', () => {
+            lastTouchToggle = Date.now();
+        }, { passive: true });
+    }
+
+    updateToggleState();
 }
 
 // Initialize the map when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.posterMap = new PosterSessionMap();
+    initializeTableOnlyToggle(window.posterMap);
     initializeMobileTableScrollFix();
 });
 

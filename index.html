@@ -24,6 +24,9 @@
             flex-direction: column;
             height: 100vh;
             touch-action: manipulation;
+            --map-panel-height-mobile: 40vh;
+            --table-panel-height-mobile: auto;
+            --map-table-resizer-height: 14px;
         }
 
         .header {
@@ -75,7 +78,7 @@
 
             .header h1 .subheading {
                 display: block;
-                font-size: 1.2rem;
+                font-size: 1.5rem;
                 font-weight: 500;
                 margin-left: 0;
                 margin-top: 0.5rem;
@@ -204,7 +207,8 @@
             border-radius: 10px;
             padding: 1rem;
             box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.1);
-            border: 1px solid rgba(0,0,0,0.1);
+            --tooltip-border-color: rgba(0,0,0,0.18);
+            border: 1px solid var(--tooltip-border-color, rgba(0,0,0,0.18));
             opacity: 0;
             transform: scale(0.9);
             transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -222,6 +226,7 @@
             height: var(--arrow-size, 12px);
             background: white;
             clip-path: polygon(50% 0, 0 100%, 100% 100%);
+            box-shadow: 0 0 0 1px var(--tooltip-border-color, rgba(0,0,0,0.18));
             filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.15));
             transition: transform 0.2s ease;
             pointer-events: none; /* Critical: arrow won't interfere with hover */
@@ -496,23 +501,64 @@ body.map-fullscreen .table-responsive {
             touch-action: pan-y;
         }
 
+        .map-table-resizer {
+            display: none;
+        }
+
         #filter-form-container {
             position: sticky;
             top: 0;
             z-index: 6;
-            background: inherit;d: inherit;
+            background: inherit;
+        }
+
+        .table-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px 10px 20px;
+        }
+
+        .table-toolbar .search-form {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+
+        .table-view-toggle {
+            border: none;
+            border-radius: 8px;
+            background: #007FA3;
+            color: #fff;
+            font-weight: 600;
+            padding: 0.65rem 1.1rem;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+            box-shadow: 0 2px 10px rgba(0, 127, 163, 0.25);
+            white-space: nowrap;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .table-view-toggle:hover {
+            background: #026e8c;
+            transform: translateY(-1px);
+        }
+
+        .table-view-toggle:focus-visible {
+            outline: 2px solid #000;
+            outline-offset: 2px;
         }
 
         .table-responsive {
             min-height: 0;
-            height: var(--table-scroll-max-height, 100%);
             overflow-y: auto;
             overflow-x: auto;
             max-height: calc(100vh - 220px);
             max-height: calc(100dvh - 220px);
             max-height: var(--table-scroll-max-height, calc(100dvh - 220px));
             -webkit-overflow-scrolling: touch;
-            touch-action: pan-y;
+            touch-action: pan-x pan-y;
             overscroll-behavior: contain;
         }
 
@@ -567,7 +613,7 @@ body.map-fullscreen .table-responsive {
             display: table-cell;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px), (max-height: 600px) and (orientation: landscape) {
             #tsvTable th.responsive-hidden,
             #tsvTable td.responsive-hidden {
                 display: none;
@@ -575,6 +621,34 @@ body.map-fullscreen .table-responsive {
             #tsvTable {
                 min-width: 100%;
                 width: 100%;
+            }
+        }
+
+        @media (max-width: 900px) and (orientation: landscape) {
+            .main-content {
+                flex-direction: row;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .map-container {
+                flex: 1 1 50%;
+                height: auto;
+                min-height: 220px;
+            }
+
+            .table-container {
+                flex: 1 1 50%;
+                height: auto;
+                min-height: 220px;
+            }
+
+            .table-responsive {
+                overflow-x: auto;
+            }
+
+            .map-table-resizer {
+                display: none !important;
             }
         }
 
@@ -753,15 +827,47 @@ body.map-fullscreen .table-responsive {
             display: none !important;
         }
 
+        body.table-only .main-content {
+            justify-content: center;
+            gap: 0;
+        }
+
+        body.table-only .map-container {
+            display: none;
+        }
+
+        body.table-only .table-container {
+            flex: 1 1 auto;
+            max-width: min(100%, 1200px);
+        }
+
+        body.table-only .table-container::after {
+            content: '';
+            display: block;
+            height: 16px;
+        }
+
         /* Mobile table styles */
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px), (max-height: 600px) and (orientation: landscape) {
             
             /* Mobile search bar styles */
             #filter-form-container {
                 width: 100%;
                 padding: 15px 20px 10px 20px;
                 margin-bottom: 10px;
+            }
+
+            .table-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 12px 0 10px 0;
+            }
+
+            .table-view-toggle {
+                width: 100%;
+                box-shadow: 0 2px 8px rgba(0, 127, 163, 0.2);
             }
             
             #filter-form-container .input-group {
@@ -788,7 +894,7 @@ body.map-fullscreen .table-responsive {
         }
 
         /* Mobile optimizations */
-        @media (max-width: 768px) {
+        @media (max-width: 900px), (max-height: 600px) and (orientation: landscape) {
             html,
             body {
                 height: 100dvh;
@@ -849,28 +955,102 @@ body.map-fullscreen .table-responsive {
             .map-container {
                 flex: none;
                 width: 100%;
-                min-height: 220px;
-                height: 40vh;
+                min-height: 180px;
+                height: var(--map-panel-height-mobile, 40vh);
+                transition: height 0.12s ease;
+            }
+
+            .map-table-resizer {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: var(--map-table-resizer-height, 14px);
+                margin: 0 8px;
+                border-radius: 999px;
+                background: rgba(0, 0, 0, 0.08);
+                cursor: ns-resize;
+                touch-action: none;
+                -webkit-user-select: none;
+                user-select: none;
+                transition: background 0.2s ease;
+            }
+
+            .map-table-resizer::before {
+                content: '';
+                width: 46px;
+                height: 4px;
+                border-radius: 999px;
+                background: rgba(0, 0, 0, 0.35);
+            }
+
+            .map-table-resizer:hover,
+            body.dragging-panels .map-table-resizer {
+                background: rgba(0, 127, 163, 0.18);
+            }
+
+            .map-table-resizer:focus-visible {
+                outline: 2px solid #007FA3;
+                outline-offset: 2px;
             }
 
             .table-container {
                 width: 100%;
-                flex: 1;
-                min-height: 0;
-                height: auto;
+                flex: none;
+                min-height: 200px;
+                height: var(--table-panel-height-mobile, auto);
                 display: flex;
                 flex-direction: column;
+                transition: height 0.12s ease;
             }
-            
+
             .table-responsive {
                 flex: 1;
                 min-height: 0;
-                height: var(--table-scroll-max-height, 100%);
                 overflow-y: auto;
                 overflow-x: hidden;
                 max-height: var(--table-scroll-max-height, 100%);
             }
-            
+
+            body.table-only .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            body.table-only .table-responsive table {
+                min-width: 100%;
+                width: fit-content;
+                width: max-content;
+            }
+
+            body.table-only #tsvTable th.responsive-hidden,
+            body.table-only #tsvTable td.responsive-hidden {
+                display: table-cell;
+            }
+            body.table-only #tsvTable th,
+            body.table-only #tsvTable td {
+                white-space: nowrap;
+                overflow-wrap: normal;
+                word-break: normal;
+            }
+
+            body.table-only #tsvTable .poster-title,
+            body.table-only #tsvTable .student-column,
+            body.table-only #tsvTable .faculty-column {
+                white-space: nowrap !important;
+            }
+
+            body.table-only #tsvTable th.category-column,
+            body.table-only #tsvTable td.category-column {
+                min-width: 120px;
+                max-width: clamp(120px, 40vw, 180px);
+                white-space: normal !important;
+                overflow-wrap: anywhere;
+            }
+
+            body.table-only .map-table-resizer {
+                display: none !important;
+            }
+
 
             .header h1 {
                 font-size: 1.8rem;
@@ -992,7 +1172,7 @@ body.map-fullscreen .table-responsive {
         <div class="map-container">
             <svg class="svg-map" viewBox="0 0 1150 1360" id="posterMap">
                 <!-- Background -->
-                <rect width="1150" height="1360" fill="#F8F6F0" stroke="#606060"/>
+                <rect width="1150" height="1360" fill="#FFEBCD" stroke="#606060"/>
                 
                 <!-- Buildings will be added via Layout API -->
                 
@@ -1039,15 +1219,19 @@ body.map-fullscreen .table-responsive {
                 <div class="info-description" id="infoDescription">Hover over any poster area to view details</div>
             </div>
         </div>
+        <div class="map-table-resizer" role="separator" aria-orientation="horizontal" aria-label="Resize map and table" tabindex="0"></div>
 
         <div class="table-container" id="tablePanel">
             <div id="filter-form-container">
-                <form class="search-form" role="search">
-                    <input type="text" class="form-control" id="searchbar" placeholder="Search posters..." aria-label="Search posters">
-                    <button type="button" id="clearSearch" aria-label="Clear search">
-                        <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
-                    </button>
-                </form>
+                <div class="table-toolbar">
+                    <form class="search-form" role="search">
+                        <input type="text" class="form-control" id="searchbar" placeholder="Search posters..." aria-label="Search posters">
+                        <button type="button" id="clearSearch" aria-label="Clear search">
+                            <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                        </button>
+                    </form>
+                    <button type="button" class="table-view-toggle" id="toggleTableView" aria-pressed="false" aria-label="View table only">Table Only</button>
+                </div>
             </div>
             <div class="table-responsive">
                 <table id="tsvTable" class="table table-striped table-hover">
@@ -1065,6 +1249,13 @@ body.map-fullscreen .table-responsive {
     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script>
+        const COMPACT_WIDTH_BREAKPOINT = 900;
+        const COMPACT_HEIGHT_BREAKPOINT = 600;
+        const isCompactLayout = () => {
+            const isLandscape = window.innerWidth >= window.innerHeight;
+            return window.innerWidth <= COMPACT_WIDTH_BREAKPOINT || (isLandscape && window.innerHeight <= COMPACT_HEIGHT_BREAKPOINT);
+        };
+
         // Table functionality
         function getEaselColor(easelId) {
             if (!easelId) {
@@ -1097,9 +1288,9 @@ body.map-fullscreen .table-responsive {
                 case 'E':
                     return '#000000';
                 case 'HC':
-                    return '#FFD700';
+                    return '#B8860B';
                 case 'BHC':
-                    return '#FFD700';
+                    return '#FFA500';
                 case 'HSA':
                     return '#20B2AA';
                 case 'HSAM':
@@ -1156,7 +1347,7 @@ body.map-fullscreen .table-responsive {
         }
 
         function createColorIcon(easelId) {
-            const normalizedId = (easelId ?? '').toString().trim();
+            const normalizedId = (easelId === null || easelId === undefined ? '' : easelId).toString().trim();
             const displayText = normalizedId || '?';
             const backgroundColor = getEaselColor(normalizedId);
             const textColor = getEaselTextColor(backgroundColor);
@@ -1413,7 +1604,13 @@ body.map-fullscreen .table-responsive {
 
         function applyRowSelection(rowElement, options = {}) {
             const { scrollIntoView = false } = options;
-            const row = rowElement instanceof HTMLElement ? rowElement : rowElement?.[0];
+            let row = null;
+
+            if (rowElement instanceof HTMLElement) {
+                row = rowElement;
+            } else if (rowElement && rowElement[0] instanceof HTMLElement) {
+                row = rowElement[0];
+            }
 
             if (!row) {
                 return null;
@@ -1451,13 +1648,21 @@ body.map-fullscreen .table-responsive {
                 }
 
                 if (highlightedMarker.coordinates && window.posterMap && typeof window.posterMap.centerOnCoordinates === 'function') {
+                    const centerOptions = {
+                        animate: true,
+                        onComplete: triggerTooltip
+                    };
+
+                    if (isCompactLayout()) {
+                        centerOptions.minZoom = 2.1;
+                        // Leave extra room on the right for the marker tooltip when focusing from the table
+                        centerOptions.focus = { x: 0.32, y: 0.5 };
+                    }
+
                     window.posterMap.centerOnCoordinates(
                         highlightedMarker.coordinates.x,
                         highlightedMarker.coordinates.y,
-                        {
-                            animate: true,
-                            onComplete: triggerTooltip
-                        }
+                        centerOptions
                     );
                 } else {
                     triggerTooltip();
@@ -1488,7 +1693,7 @@ body.map-fullscreen .table-responsive {
                 return;
             }
             markerData.partnerCircles.forEach(circle => {
-                if (circle?.classList) {
+                if (circle && circle.classList) {
                     circle.classList.add('marker-sibling-faded');
                 }
             });
@@ -1561,7 +1766,7 @@ body.map-fullscreen .table-responsive {
                 return;
             }
 
-            const selectedMountId = selectedMarker?.mountId || null;
+            const selectedMountId = selectedMarker ? selectedMarker.mountId : null;
 
             const processedGroups = new Set();
             let fadedCount = 0;
@@ -1986,7 +2191,7 @@ body.map-fullscreen .table-responsive {
                         if (element.type === 'poster-mount') {
                             const markerGroup = element.element;
 
-                            if (element.sideA?.easelBoard && element.sideA.easelBoard !== 'Unassigned') {
+                            if (element.sideA && element.sideA.easelBoard && element.sideA.easelBoard !== 'Unassigned') {
                                 const sideACircle = markerGroup.querySelector('circle[data-side="A"][data-easel]') || markerGroup.querySelector('circle[data-side="A"]');
                                 if (sideACircle) {
                                     nextMarkers.push({
@@ -2000,7 +2205,7 @@ body.map-fullscreen .table-responsive {
                                 }
                             }
 
-                            if (element.sideB?.easelBoard && element.sideB.easelBoard !== 'Unassigned') {
+                            if (element.sideB && element.sideB.easelBoard && element.sideB.easelBoard !== 'Unassigned') {
                                 const sideBCircle = markerGroup.querySelector('circle[data-side="B"][data-easel]') || markerGroup.querySelector('circle[data-side="B"]');
                                 if (sideBCircle) {
                                     nextMarkers.push({
@@ -2015,7 +2220,7 @@ body.map-fullscreen .table-responsive {
                             }
 
                         } else if (element.type === 'lone-marker') {
-                            if (element.poster?.easelBoard) {
+                            if (element.poster && element.poster.easelBoard) {
                                 const markerGroup = element.element;
                                 const loneCircle = markerGroup.querySelector('circle[data-easel]') || markerGroup.querySelector('circle');
                                 if (loneCircle) {
@@ -2089,6 +2294,363 @@ body.map-fullscreen .table-responsive {
                 svgMap.style.transform = `scale(${initialScale})`;
             }
         }
+
+        function setupMobilePanelResizer() {
+            const resizer = document.querySelector('.map-table-resizer');
+            const mapContainer = document.querySelector('.map-container');
+            const tableContainer = document.querySelector('.table-container');
+            const mainContent = document.querySelector('.main-content');
+
+            if (!resizer || !mapContainer || !tableContainer || !mainContent) {
+                return;
+            }
+
+            const state = {
+                dragging: false,
+                startY: 0,
+                startMap: 0,
+                startTable: 0,
+                total: 0,
+                pointerId: null,
+                touchId: null,
+                activeInput: null
+            };
+
+            const MIN_MAP = 160;
+            const MIN_TABLE = 200;
+            const MIN_FRACTION = 0.25;
+            const KEYBOARD_STEP = 48;
+
+            const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+            const applyHeights = (mapHeight, tableHeight) => {
+                document.body.style.setProperty('--map-panel-height-mobile', `${Math.round(mapHeight)}px`);
+                document.body.style.setProperty('--table-panel-height-mobile', `${Math.round(tableHeight)}px`);
+            };
+
+            const readHeights = () => {
+                const mapRect = mapContainer.getBoundingClientRect();
+                const tableRect = tableContainer.getBoundingClientRect();
+                return {
+                    map: mapRect.height,
+                    table: tableRect.height
+                };
+            };
+
+            const deriveBounds = total => {
+                let minMap = Math.max(MIN_MAP, total * MIN_FRACTION);
+                let minTable = Math.max(MIN_TABLE, total * MIN_FRACTION);
+
+                if (minMap + minTable > total) {
+                    const scale = total / (minMap + minTable);
+                    minMap *= scale;
+                    minTable *= scale;
+                }
+
+                const maxMap = total - minTable;
+                minMap = Math.min(minMap, maxMap);
+
+                return {
+                    minMap: Math.max(96, minMap),
+                    maxMap: Math.max(minMap, maxMap)
+                };
+            };
+
+            const syncToCurrent = () => {
+                if (!isCompactLayout()) {
+                    document.body.style.removeProperty('--map-panel-height-mobile');
+                    document.body.style.removeProperty('--table-panel-height-mobile');
+                    return;
+                }
+
+                const { map, table } = readHeights();
+                applyHeights(map, table);
+            };
+
+            const beginDrag = (startClientY, inputType) => {
+                const { map, table } = readHeights();
+                state.dragging = true;
+                state.startY = startClientY;
+                state.startMap = map;
+                state.startTable = table;
+                state.total = map + table;
+                state.activeInput = inputType;
+                state.pointerId = null;
+                state.touchId = null;
+                document.body.classList.add('dragging-panels');
+            };
+
+            const updateDrag = clientY => {
+                if (!state.dragging) {
+                    return;
+                }
+
+                const delta = clientY - state.startY;
+                const bounds = deriveBounds(state.total);
+                const desiredMap = state.startMap + delta;
+                const nextMap = clamp(desiredMap, bounds.minMap, bounds.maxMap);
+                const nextTable = state.total - nextMap;
+                applyHeights(nextMap, nextTable);
+            };
+
+            const finishDrag = () => {
+                if (!state.dragging) {
+                    return;
+                }
+
+                state.dragging = false;
+                state.pointerId = null;
+                state.touchId = null;
+                state.activeInput = null;
+                document.body.classList.remove('dragging-panels');
+                syncToCurrent();
+            };
+
+            const supportsPointerEvents = 'PointerEvent' in window;
+
+            const pointerDown = event => {
+                if (!isCompactLayout()) {
+                    return;
+                }
+                if (typeof event.button === 'number' && event.button !== 0) {
+                    return;
+                }
+                if (state.activeInput && state.activeInput !== 'pointer') {
+                    return;
+                }
+
+                if (event.cancelable !== false) {
+                    event.preventDefault();
+                }
+                beginDrag(event.clientY, 'pointer');
+                state.pointerId = typeof event.pointerId === 'number' ? event.pointerId : null;
+
+                if (state.pointerId !== null && typeof resizer.setPointerCapture === 'function') {
+                    try {
+                        resizer.setPointerCapture(state.pointerId);
+                    } catch (_) {
+                        // Ignore if pointer capture is not available
+                    }
+                }
+            };
+
+            const pointerMove = event => {
+                if (!state.dragging || state.activeInput !== 'pointer') {
+                    return;
+                }
+                if (state.pointerId !== null && typeof event.pointerId === 'number' && event.pointerId !== state.pointerId) {
+                    return;
+                }
+
+                if (event.cancelable !== false) {
+                    event.preventDefault();
+                }
+                updateDrag(event.clientY);
+            };
+
+            const pointerEnd = event => {
+                if (!state.dragging || state.activeInput !== 'pointer') {
+                    return;
+                }
+                if (state.pointerId !== null && typeof event.pointerId === 'number' && event.pointerId !== state.pointerId) {
+                    return;
+                }
+
+                if (state.pointerId !== null && typeof resizer.releasePointerCapture === 'function') {
+                    try {
+                        resizer.releasePointerCapture(state.pointerId);
+                    } catch (_) {
+                        // Ignore if pointer capture is not available
+                    }
+                }
+
+                state.pointerId = null;
+                finishDrag();
+            };
+
+            const getTouchById = (touchList, id) => {
+                if (!touchList || typeof id !== 'number') {
+                    return null;
+                }
+                for (let i = 0; i < touchList.length; i++) {
+                    const touch = touchList.item ? touchList.item(i) : touchList[i];
+                    if (touch && touch.identifier === id) {
+                        return touch;
+                    }
+                }
+                return null;
+            };
+
+            const touchStart = event => {
+                if (!isCompactLayout()) {
+                    return;
+                }
+                const touch = event.changedTouches && event.changedTouches[0];
+                if (!touch) {
+                    return;
+                }
+                if (state.activeInput && state.activeInput !== 'touch') {
+                    return;
+                }
+
+                beginDrag(touch.clientY, 'touch');
+                state.touchId = touch.identifier;
+                if (event.cancelable !== false) {
+                    event.preventDefault();
+                }
+            };
+
+            const touchMove = event => {
+                if (!state.dragging || state.activeInput !== 'touch') {
+                    return;
+                }
+
+                const touch = getTouchById(event.touches, state.touchId);
+                if (!touch) {
+                    return;
+                }
+
+                if (event.cancelable !== false) {
+                    event.preventDefault();
+                }
+                updateDrag(touch.clientY);
+            };
+
+            const touchEnd = event => {
+                if (!state.dragging || state.activeInput !== 'touch') {
+                    return;
+                }
+
+                const touch = getTouchById(event.changedTouches, state.touchId);
+                if (!touch) {
+                    return;
+                }
+
+                state.touchId = null;
+                finishDrag();
+            };
+
+            const mouseDown = event => {
+                if (supportsPointerEvents) {
+                    return;
+                }
+                if (!isCompactLayout()) {
+                    return;
+                }
+                if (event.button !== 0) {
+                    return;
+                }
+
+                if (event.cancelable !== false) {
+                    event.preventDefault();
+                }
+                beginDrag(event.clientY, 'mouse');
+            };
+
+            const mouseMove = event => {
+                if (!state.dragging || state.activeInput !== 'mouse') {
+                    return;
+                }
+
+                if (event.cancelable !== false) {
+                    event.preventDefault();
+                }
+                updateDrag(event.clientY);
+            };
+
+            const mouseUp = () => {
+                if (!state.dragging || state.activeInput !== 'mouse') {
+                    return;
+                }
+                finishDrag();
+            };
+
+            if (supportsPointerEvents) {
+                resizer.addEventListener('pointerdown', pointerDown);
+                window.addEventListener('pointermove', pointerMove);
+                window.addEventListener('pointerup', pointerEnd);
+                window.addEventListener('pointercancel', pointerEnd);
+            }
+
+            try {
+                resizer.addEventListener('touchstart', touchStart, { passive: false });
+            } catch (_) {
+                resizer.addEventListener('touchstart', touchStart);
+            }
+
+            try {
+                window.addEventListener('touchmove', touchMove, { passive: false });
+            } catch (_) {
+                window.addEventListener('touchmove', touchMove);
+            }
+
+            window.addEventListener('touchend', touchEnd);
+            window.addEventListener('touchcancel', touchEnd);
+
+            if (!supportsPointerEvents) {
+                resizer.addEventListener('mousedown', mouseDown);
+                window.addEventListener('mousemove', mouseMove);
+                window.addEventListener('mouseup', mouseUp);
+            }
+
+            resizer.addEventListener('keydown', event => {
+                if (!isCompactLayout()) {
+                    return;
+                }
+
+                const key = event.key;
+                if (key !== 'ArrowUp' && key !== 'ArrowDown' && key !== 'Home' && key !== 'End') {
+                    return;
+                }
+
+                const { map, table } = readHeights();
+                const total = map + table;
+                const bounds = deriveBounds(total);
+                let nextMap = map;
+
+                if (key === 'ArrowUp') {
+                    nextMap = map - KEYBOARD_STEP;
+                } else if (key === 'ArrowDown') {
+                    nextMap = map + KEYBOARD_STEP;
+                } else if (key === 'Home') {
+                    nextMap = bounds.minMap;
+                } else if (key === 'End') {
+                    nextMap = bounds.maxMap;
+                }
+
+                nextMap = clamp(nextMap, bounds.minMap, bounds.maxMap);
+                const nextTable = total - nextMap;
+                applyHeights(nextMap, nextTable);
+                event.preventDefault();
+            });
+
+            const handleResize = () => {
+                if (state.dragging) {
+                    return;
+                }
+                syncToCurrent();
+            };
+
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('orientationchange', () => {
+                setTimeout(handleResize, 200);
+            });
+
+            if (window.ResizeObserver) {
+                const observer = new ResizeObserver(() => {
+                    if (state.dragging || !isCompactLayout()) {
+                        return;
+                    }
+                    syncToCurrent();
+                });
+
+                observer.observe(mainContent);
+            }
+
+            if (isCompactLayout()) {
+                requestAnimationFrame(syncToCurrent);
+            }
+        }
         
         // Monitor zoom changes for map only
         window.addEventListener('resize', preventMapZoomOut);
@@ -2099,6 +2661,7 @@ body.map-fullscreen .table-responsive {
             console.log('made by jon ebueng from CIS :)');
             initializeLayout();
             loadTableData();
+            setupMobilePanelResizer();
             preventMapZoomOut(); // Initial check
         });
     </script>

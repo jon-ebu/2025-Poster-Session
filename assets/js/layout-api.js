@@ -67,10 +67,10 @@ class LayoutAPI {
                 color = "#FFA500"; // orange (EP-1)
                 break;
             case "HC":
-                color = "#FFD700"; // gold (HC-1)
+                color = "#B59410"; // reference gold (HC-1)
                 break;
             case "BHC":
-                color = "#FFD700"; // gold (BHC-1 matches HC color)
+                color = "#FFA500"; // orange (BHC aligns with BCS palette)
                 break;
             case "HSA":
                 color = "#20B2AA"; // light teal (HSA-1)
@@ -584,6 +584,8 @@ class LayoutAPI {
         const isVertical = orientation === 'vertical';
         const boardWidth = isVertical ? 16 : 60;
         const boardHeight = isVertical ? 60 : 16;
+        const style = config.style || {};
+        const poster = config.poster || {};
 
         const board = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         board.setAttribute('x', -boardWidth / 2);
@@ -591,9 +593,9 @@ class LayoutAPI {
         board.setAttribute('width', boardWidth);
         board.setAttribute('height', boardHeight);
         board.setAttribute('rx', 2);
-        board.setAttribute('fill', config.style?.boardFill || '#4a4a4a');
-        board.setAttribute('stroke', config.style?.boardStroke || '#2a2a2a');
-        board.setAttribute('stroke-width', config.style?.boardStrokeWidth || 1);
+        board.setAttribute('fill', style.boardFill || '#4a4a4a');
+        board.setAttribute('stroke', style.boardStroke || '#2a2a2a');
+        board.setAttribute('stroke-width', style.boardStrokeWidth || 1);
         board.setAttribute('pointer-events', 'none');
         group.appendChild(board);
 
@@ -602,15 +604,15 @@ class LayoutAPI {
         marker.setAttribute('cx', 0);
         marker.setAttribute('cy', 0);
         marker.setAttribute('r', 14);
-        marker.setAttribute('fill', this.getColorByEaselBoardId(config.poster.easelBoard));
+        marker.setAttribute('fill', this.getColorByEaselBoardId(poster.easelBoard));
         marker.setAttribute('stroke', 'white');
         marker.setAttribute('stroke-width', 2);
         marker.style.cursor = 'pointer';
         marker.style.transition = 'r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease-out';
         marker.setAttribute('tabindex', '0');
         marker.setAttribute('role', 'button');
-        marker.setAttribute('aria-label', `Poster: ${config.poster.title}`);
-        marker.setAttribute('data-easel', config.poster?.easelBoard || '');
+        marker.setAttribute('aria-label', `Poster: ${poster.title || 'Poster'}`);
+        marker.setAttribute('data-easel', poster.easelBoard || '');
         marker.classList.add('color-marker');
 
         // Add text for the marker showing easel ID with dynamic sizing
@@ -620,18 +622,18 @@ class LayoutAPI {
         markerText.setAttribute('text-anchor', 'middle');
         markerText.setAttribute('dominant-baseline', 'central');
         markerText.setAttribute('font-family', 'Arial, sans-serif');
-        
+
         // Dynamic font sizing based on text length
-        const easelBoard = config.poster.easelBoard || '';
+        const easelBoard = poster.easelBoard || '';
         const fontSize = this.calculateFontSize(easelBoard);
         markerText.setAttribute('font-size', fontSize);
-        
+
         // Store original font size for hover effect
         markerText.setAttribute('data-original-font-size', fontSize);
-        
+
         markerText.setAttribute('font-weight', 'bold');
         // Use dynamic text color based on background color for better contrast
-        const backgroundColor = this.getColorByEaselBoardId(config.poster.easelBoard);
+        const backgroundColor = this.getColorByEaselBoardId(poster.easelBoard);
         const textColor = this.getTextColorForBackground(backgroundColor);
         markerText.setAttribute('fill', textColor);
         markerText.setAttribute('pointer-events', 'none'); // Make text non-interactive to prevent hover conflicts
@@ -730,8 +732,13 @@ class LayoutAPI {
                 if (window.posterMap) {
                     const easel = config.poster.easelBoard || 'N/A';
                     const title = config.poster.title || 'Poster Information';
-                    const bgColor = window.layout?.getColorByEaselBoardId?.(easel) || '#404040';
-                    const textColor = window.layout?.getTextColorForBackground?.(bgColor) || 'white';
+                    const layoutInstance = window.layout;
+                    const bgColor = (layoutInstance && typeof layoutInstance.getColorByEaselBoardId === 'function')
+                        ? (layoutInstance.getColorByEaselBoardId(easel) || '#404040')
+                        : '#404040';
+                    const textColor = (layoutInstance && typeof layoutInstance.getTextColorForBackground === 'function')
+                        ? (layoutInstance.getTextColorForBackground(bgColor) || 'white')
+                        : 'white';
                     const fontSize = easel.length <= 2 ? 13 : easel.length <= 4 ? 11 : easel.length <= 6 ? 10 : 9;
                     window.posterMap.infoTitle.innerHTML = `
                         <span class="easel-pill" data-easel="${easel}">
@@ -759,43 +766,49 @@ class LayoutAPI {
         
         const positionInfoPanelSmart = (markerElement, poster) => {
             const panel = window.posterMap.infoPanel;
-            
+            const clamp = (value, min, max) => {
+                if (max < min) {
+                    return min;
+                }
+                return Math.min(Math.max(value, min), max);
+            };
+
             // Calculate content length to determine tooltip size
-            const totalContentLength = (poster.title || '').length + 
-                                     (poster.students || '').length + 
-                                     (poster.facultyMentor || '').length + 
+            const totalContentLength = (poster.title || '').length +
+                                     (poster.students || '').length +
+                                     (poster.facultyMentor || '').length +
                                      (poster.category || '').length;
-            
+
             // Dynamic sizing based on content length
             const isMobile = window.innerWidth <= 768;
             const basePanelWidth = isMobile ? 220 : 280;
             const basePanelHeight = isMobile ? 120 : 160;
-            
+
             // Adjust dimensions for longer content
             const contentFactor = Math.min(totalContentLength / 200, 1.5); // Cap at 1.5x size
-            const panelWidth = Math.floor(basePanelWidth * (1 + contentFactor * 0.3)); // Up to 30% wider
-            const panelHeight = Math.floor(basePanelHeight * (1 + contentFactor * 0.4)); // Up to 40% taller
-            
+            let panelWidth = Math.floor(basePanelWidth * (1 + contentFactor * 0.3)); // Up to 30% wider
+            let panelHeight = Math.floor(basePanelHeight * (1 + contentFactor * 0.4)); // Up to 40% taller
+
             // Calculate dynamic arrow size early for use in positioning
             const baseArrowSize = isMobile ? 9 : 12;
             const sizeMultiplier = Math.min(contentFactor, 1.3); // Cap multiplier
             const dynamicArrowSize = Math.floor(baseArrowSize * (1 + sizeMultiplier * 0.4)); // Up to 40% larger
-            
+
             // Dynamic gap based on tooltip size - closer by default but still hover-safe
             const baseGap = isMobile ? 18 : 24; // Bring tooltip nearer to marker
             const hoverBuffer = dynamicArrowSize + (isMobile ? 6 : 9); // Leave room for cursor between marker and panel
             const dynamicGap = baseGap + Math.max(panelHeight - basePanelHeight, 0) * 0.15;
             const gap = Math.max(hoverBuffer, Math.floor(dynamicGap));
             const margin = isMobile ? 15 : 20;
-            
+
             // Get marker position relative to viewport
             const markerRect = markerElement.getBoundingClientRect();
             const markerCenterX = markerRect.left + markerRect.width / 2;
             const markerCenterY = markerRect.top + markerRect.height / 2;
-            
+
             // Check if marker is actually visible in viewport
-            if (markerRect.left < -50 || markerRect.top < -50 || 
-                markerRect.left > window.innerWidth + 50 || 
+            if (markerRect.left < -50 || markerRect.top < -50 ||
+                markerRect.left > window.innerWidth + 50 ||
                 markerRect.top > window.innerHeight + 50) {
                 // Marker is off-screen, use fallback positioning
                 panel.style.position = 'fixed';
@@ -807,94 +820,158 @@ class LayoutAPI {
                 panel.style.removeProperty('--arrow-position');
                 return;
             }
-            
+
             const viewWidth = window.innerWidth;
             const viewHeight = window.innerHeight;
-            
-            let panelX, panelY, arrowSide, arrowPosition;
-            
-            // Adjust zones based on zoom level for better positioning when zoomed in
-            const currentZoom = window.posterMap ? window.posterMap.currentZoom : 1;
-            const zoomFactor = Math.min(currentZoom / 4, 1); // Reduce zone sensitivity when zoomed in
-            
-            // More conservative zones when zoomed in to prevent tooltips going off-screen
-            const topZone = viewHeight * (0.25 + 0.1 * zoomFactor);
-            const bottomZone = viewHeight * (0.75 - 0.1 * zoomFactor);
-            const leftZone = viewWidth * (0.4 + 0.1 * zoomFactor);
-            const rightZone = viewWidth * (0.6 - 0.1 * zoomFactor);
-            
-            if (markerCenterY < topZone) {
-                // Top zone - position below marker
-                panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
-                panelY = Math.min(viewHeight - panelHeight - margin, markerCenterY + gap);
-                arrowSide = 'top';
-                // Better arrow position constraints - ensure arrow stays well within bounds
-                const arrowBuffer = dynamicArrowSize + 3; // Extra buffer based on arrow size
-                arrowPosition = Math.max(arrowBuffer, Math.min(panelWidth - arrowBuffer, markerCenterX - panelX));
-                
-            } else if (markerCenterY > bottomZone) {
-                // Bottom zone - position well above marker
-                panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
-                panelY = Math.max(margin, markerCenterY - panelHeight - gap - 50); // Much larger buffer
+            const mapContainer = document.querySelector('.map-container');
+            const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : null;
+
+            if (mapRect) {
+                const maxWidthWithinMap = Math.max(160, mapRect.width - margin * 2);
+                panelWidth = Math.min(panelWidth, Math.floor(maxWidthWithinMap));
+                const maxHeightWithinMap = Math.max(isMobile ? 120 : 140, mapRect.height - margin * 2);
+                panelHeight = Math.min(panelHeight, Math.floor(maxHeightWithinMap));
+            }
+
+            const availableLeft = markerCenterX - (mapRect ? mapRect.left + margin : margin);
+            const availableRight = (mapRect ? mapRect.right - margin : viewWidth - margin) - markerCenterX;
+            const availableTop = markerCenterY - (mapRect ? mapRect.top + margin : margin);
+            const availableBottom = (mapRect ? mapRect.bottom - margin : viewHeight - margin) - markerCenterY;
+
+            const orientationDimensions = {
+                above: { width: panelWidth, height: panelHeight },
+                below: { width: panelWidth, height: panelHeight },
+                right: { width: panelWidth, height: panelHeight },
+                left: { width: panelWidth, height: panelHeight }
+            };
+
+            if (isMobile) {
+                const widenedWidth = Math.round(panelWidth * 1.15);
+                const trimmedHeight = Math.max(Math.round(panelHeight * 0.72), Math.round(basePanelHeight * 0.65));
+                orientationDimensions.above = {
+                    width: widenedWidth,
+                    height: trimmedHeight
+                };
+            }
+
+            const canPlaceAbove = availableTop >= orientationDimensions.above.height + gap;
+            const canPlaceBelow = availableBottom >= orientationDimensions.below.height + gap;
+            const canPlaceRight = availableRight >= orientationDimensions.right.width + gap;
+            const canPlaceLeft = availableLeft >= orientationDimensions.left.width + gap;
+
+            let chosenOrientation;
+            let arrowSide;
+            let tightPlacement = false;
+
+            if (canPlaceAbove) {
+                chosenOrientation = 'above';
                 arrowSide = 'bottom';
-                // Better arrow position constraints - ensure arrow stays well within bounds
-                const arrowBuffer = dynamicArrowSize + 5; // Extra buffer based on arrow size
-                arrowPosition = Math.max(arrowBuffer, Math.min(panelWidth - arrowBuffer, markerCenterX - panelX));
-                
-            } else {
-                // Middle zone - position to the side, but check space available
-                const spaceLeft = markerCenterX - margin;
-                const spaceRight = viewWidth - markerCenterX - margin;
-                const spaceTop = markerCenterY - margin;
-                const spaceBottom = viewHeight - markerCenterY - margin;
-                
-                // Choose the side with more space, preferring horizontal positioning
-                if (spaceRight > panelWidth + gap && spaceRight > spaceLeft) {
-                    // Position to the right
-                    panelX = Math.min(viewWidth - panelWidth - margin, markerCenterX + gap);
-                    panelY = Math.max(margin, Math.min(viewHeight - panelHeight - margin, markerCenterY - panelHeight/2));
+            } else if (canPlaceBelow && availableBottom >= availableTop) {
+                chosenOrientation = 'below';
+                arrowSide = 'top';
+            } else if (canPlaceRight || canPlaceLeft) {
+                if (canPlaceRight && (!canPlaceLeft || availableRight >= availableLeft)) {
+                    chosenOrientation = 'right';
                     arrowSide = 'left';
-                    // Better arrow position constraints for vertical arrows
-                const arrowBuffer = dynamicArrowSize + 3;
-                    arrowPosition = Math.max(arrowBuffer, Math.min(panelHeight - arrowBuffer, markerCenterY - panelY));
-                } else if (spaceLeft > panelWidth + gap) {
-                    // Position to the left
-                    panelX = Math.max(margin, markerCenterX - panelWidth - gap);
-                    panelY = Math.max(margin, Math.min(viewHeight - panelHeight - margin, markerCenterY - panelHeight/2));
-                    arrowSide = 'right';
-                    // Better arrow position constraints for vertical arrows
-                const arrowBuffer = dynamicArrowSize + 3;
-                    arrowPosition = Math.max(arrowBuffer, Math.min(panelHeight - arrowBuffer, markerCenterY - panelY));
-                } else if (spaceBottom > panelHeight + gap) {
-                    // Fall back to below
-                    panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
-                    panelY = Math.min(viewHeight - panelHeight - margin, markerCenterY + gap);
-                    arrowSide = 'top';
-                    const arrowBuffer = dynamicArrowSize + 5;
-                    arrowPosition = Math.max(arrowBuffer, Math.min(panelWidth - arrowBuffer, markerCenterX - panelX));
                 } else {
-                    // Fall back to above (tooltip should be clearly above marker)
-                    panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
-                    panelY = Math.max(margin, markerCenterY - panelHeight - gap - 50); // Much larger buffer
-                    arrowSide = 'bottom';
-                    const arrowBuffer = dynamicArrowSize + 5;
-                    arrowPosition = Math.max(arrowBuffer, Math.min(panelWidth - arrowBuffer, markerCenterX - panelX));
+                    chosenOrientation = 'left';
+                    arrowSide = 'right';
+                }
+            } else if (canPlaceBelow) {
+                chosenOrientation = 'below';
+                arrowSide = 'top';
+            } else {
+                chosenOrientation = 'above';
+                arrowSide = 'bottom';
+                tightPlacement = true;
+            }
+
+            const chosenDimensions = orientationDimensions[chosenOrientation] || {};
+            let chosenWidth = chosenDimensions.width || panelWidth;
+            let chosenHeight = chosenDimensions.height || panelHeight;
+
+            if (mapRect) {
+                const maxWidthWithinMap = Math.max(160, mapRect.width - margin * 2);
+                const maxHeightWithinMap = Math.max(isMobile ? 110 : 140, mapRect.height - margin * 2);
+                chosenWidth = Math.min(chosenWidth, Math.floor(maxWidthWithinMap));
+                chosenHeight = Math.min(chosenHeight, Math.floor(maxHeightWithinMap));
+            }
+
+            const minHeight = Math.max(Math.round(basePanelHeight * (isMobile ? 0.65 : 0.75)), 80);
+            chosenHeight = Math.max(minHeight, Math.round(chosenHeight));
+            chosenWidth = Math.round(chosenWidth);
+
+            let panelX;
+            let panelY;
+
+            switch (chosenOrientation) {
+                case 'above': {
+                    const verticalGap = tightPlacement
+                        ? Math.max(8, Math.min(gap, chosenHeight / 3))
+                        : gap;
+                    panelX = markerCenterX - chosenWidth / 2;
+                    panelY = markerCenterY - chosenHeight - verticalGap;
+                    break;
+                }
+                case 'below':
+                    panelX = markerCenterX - chosenWidth / 2;
+                    panelY = markerCenterY + gap;
+                    break;
+                case 'right':
+                    panelX = markerCenterX + gap;
+                    panelY = markerCenterY - chosenHeight / 2;
+                    break;
+                case 'left':
+                    panelX = markerCenterX - chosenWidth - gap;
+                    panelY = markerCenterY - chosenHeight / 2;
+                    break;
+                default:
+                    panelX = markerCenterX - chosenWidth / 2;
+                    panelY = markerCenterY - chosenHeight - gap;
+            }
+
+            let minX = margin;
+            let maxX = viewWidth - chosenWidth - margin;
+            let minY = margin;
+            let maxY = viewHeight - chosenHeight - margin;
+
+            if (mapRect) {
+                minX = Math.max(minX, mapRect.left + margin);
+                maxX = Math.min(maxX, mapRect.right - chosenWidth - margin);
+                minY = Math.max(minY, mapRect.top + margin);
+                maxY = Math.min(maxY, mapRect.bottom - chosenHeight - margin);
+                if (maxX < minX) {
+                    maxX = minX;
+                }
+                if (maxY < minY) {
+                    maxY = minY;
                 }
             }
-            
+
+            panelX = clamp(panelX, minX, maxX);
+            panelY = clamp(panelY, minY, maxY);
+
+            const arrowBuffer = dynamicArrowSize + 4;
+            let arrowPosition;
+            if (arrowSide === 'top' || arrowSide === 'bottom') {
+                arrowPosition = clamp(markerCenterX - panelX, arrowBuffer, chosenWidth - arrowBuffer);
+            } else {
+                arrowPosition = clamp(markerCenterY - panelY, arrowBuffer, chosenHeight - arrowBuffer);
+            }
+
             // Apply positioning and dynamic sizing
             panel.style.position = 'fixed';
-            panel.style.left = `${panelX}px`;
-            panel.style.top = `${panelY}px`;
+            panel.style.left = `${Math.round(panelX)}px`;
+            panel.style.top = `${Math.round(panelY)}px`;
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
-            panel.style.width = `${panelWidth}px`;
+            panel.style.width = `${Math.round(chosenWidth)}px`;
             panel.style.height = 'auto'; // Let height adjust to content
-            panel.style.minHeight = `${panelHeight}px`;
-            
+            panel.style.minHeight = `${Math.round(chosenHeight)}px`;
+
             // Set arrow properties
             panel.style.setProperty('--arrow-side', arrowSide);
-            panel.style.setProperty('--arrow-position', `${arrowPosition}px`);
+            panel.style.setProperty('--arrow-position', `${Math.round(arrowPosition)}px`);
             panel.style.setProperty('--arrow-size', `${dynamicArrowSize}px`);
         };
 
@@ -1010,6 +1087,9 @@ class LayoutAPI {
         const isVertical = config.orientation === 'vertical';
         const width = isVertical ? 16 : 60;
         const height = isVertical ? 60 : 16;
+        const style = config.style || {};
+        const sideA = config.sideA || {};
+        const sideB = config.sideB || {};
 
         // Create the mount base (thin rectangle)
         const mount = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -1018,9 +1098,9 @@ class LayoutAPI {
         mount.setAttribute('width', width);
         mount.setAttribute('height', height);
         mount.setAttribute('rx', 2);
-        mount.setAttribute('fill', config.style?.fill || '#4a4a4a');
-        mount.setAttribute('stroke', config.style?.stroke || '#2a2a2a');
-        mount.setAttribute('stroke-width', config.style?.strokeWidth || 1);
+        mount.setAttribute('fill', style.fill || '#4a4a4a');
+        mount.setAttribute('stroke', style.stroke || '#2a2a2a');
+        mount.setAttribute('stroke-width', style.strokeWidth || 1);
 
         // Create side A indicator (left or top side) - Mobile-friendly touch target
         const sideAIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1028,16 +1108,16 @@ class LayoutAPI {
         sideAIndicator.setAttribute('cx', offsetA.x);
         sideAIndicator.setAttribute('cy', offsetA.y);
         sideAIndicator.setAttribute('r', 14); // Same size for all mounts
-        sideAIndicator.setAttribute('fill', this.getColorByEaselBoardId(config.sideA.easelBoard));
+        sideAIndicator.setAttribute('fill', this.getColorByEaselBoardId(sideA.easelBoard));
         sideAIndicator.setAttribute('stroke', 'white');
         sideAIndicator.setAttribute('stroke-width', 2);
         sideAIndicator.style.cursor = 'pointer';
         sideAIndicator.style.transition = 'r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease-out';
         sideAIndicator.setAttribute('data-side', 'A');
-        sideAIndicator.setAttribute('data-easel', config.sideA?.easelBoard || '');
+        sideAIndicator.setAttribute('data-easel', sideA.easelBoard || '');
         sideAIndicator.setAttribute('tabindex', '0');
         sideAIndicator.setAttribute('role', 'button');
-        sideAIndicator.setAttribute('aria-label', `Poster A: ${config.sideA.title}`);
+        sideAIndicator.setAttribute('aria-label', `Poster A: ${sideA.title || 'Poster'}`);
         sideAIndicator.classList.add('color-marker');
         
         // Add text for side A showing easel ID with dynamic sizing
@@ -1049,7 +1129,7 @@ class LayoutAPI {
         sideAText.setAttribute('font-family', 'Arial, sans-serif');
         
         // Dynamic font sizing based on text length
-        const sideAEaselBoard = config.sideA.easelBoard || '';
+        const sideAEaselBoard = sideA.easelBoard || '';
         const sideAFontSize = this.calculateFontSize(sideAEaselBoard);
         sideAText.setAttribute('font-size', sideAFontSize);
         
@@ -1058,7 +1138,7 @@ class LayoutAPI {
         
         sideAText.setAttribute('font-weight', 'bold');
         // Use dynamic text color based on background color for better contrast
-        const sideABackgroundColor = this.getColorByEaselBoardId(config.sideA.easelBoard);
+        const sideABackgroundColor = this.getColorByEaselBoardId(sideA.easelBoard);
         const sideATextColor = this.getTextColorForBackground(sideABackgroundColor);
         sideAText.setAttribute('fill', sideATextColor);
         sideAText.setAttribute('pointer-events', 'none'); // Make text non-interactive to prevent hover conflicts
@@ -1080,16 +1160,16 @@ class LayoutAPI {
         sideBIndicator.setAttribute('cx', offsetB.x);
         sideBIndicator.setAttribute('cy', offsetB.y);
         sideBIndicator.setAttribute('r', 14); // Same size for all mounts
-        sideBIndicator.setAttribute('fill', this.getColorByEaselBoardId(config.sideB.easelBoard));
+        sideBIndicator.setAttribute('fill', this.getColorByEaselBoardId(sideB.easelBoard));
         sideBIndicator.setAttribute('stroke', 'white');
         sideBIndicator.setAttribute('stroke-width', 2);
         sideBIndicator.style.cursor = 'pointer';
         sideBIndicator.style.transition = 'r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease-out';
         sideBIndicator.setAttribute('data-side', 'B');
-        sideBIndicator.setAttribute('data-easel', config.sideB?.easelBoard || '');
+        sideBIndicator.setAttribute('data-easel', sideB.easelBoard || '');
         sideBIndicator.setAttribute('tabindex', '0');
         sideBIndicator.setAttribute('role', 'button');
-        sideBIndicator.setAttribute('aria-label', `Poster B: ${config.sideB.title}`);
+        sideBIndicator.setAttribute('aria-label', `Poster B: ${sideB.title || 'Poster'}`);
         sideBIndicator.classList.add('color-marker');
         
         // Add text for side B showing easel ID with dynamic sizing
@@ -1101,7 +1181,7 @@ class LayoutAPI {
         sideBText.setAttribute('font-family', 'Arial, sans-serif');
         
         // Dynamic font sizing based on text length
-        const sideBEaselBoard = config.sideB.easelBoard || '';
+        const sideBEaselBoard = sideB.easelBoard || '';
         const sideBFontSize = this.calculateFontSize(sideBEaselBoard);
         sideBText.setAttribute('font-size', sideBFontSize);
         
@@ -1110,7 +1190,7 @@ class LayoutAPI {
         
         sideBText.setAttribute('font-weight', 'bold');
         // Use dynamic text color based on background color for better contrast
-        const sideBBackgroundColor = this.getColorByEaselBoardId(config.sideB.easelBoard);
+        const sideBBackgroundColor = this.getColorByEaselBoardId(sideB.easelBoard);
         const sideBTextColor = this.getTextColorForBackground(sideBBackgroundColor);
         sideBText.setAttribute('fill', sideBTextColor);
         sideBText.setAttribute('pointer-events', 'none'); // Make text non-interactive to prevent hover conflicts
@@ -1262,8 +1342,13 @@ class LayoutAPI {
                 if (window.posterMap) {
                     const easel = poster.easelBoard || poster.session || 'N/A';
                     const title = poster.title || 'Poster Information';
-                    const bgColor = window.layout?.getColorByEaselBoardId?.(easel) || '#404040';
-                    const textColor = window.layout?.getTextColorForBackground?.(bgColor) || 'white';
+                    const layoutInstance = window.layout;
+                    const bgColor = (layoutInstance && typeof layoutInstance.getColorByEaselBoardId === 'function')
+                        ? (layoutInstance.getColorByEaselBoardId(easel) || '#404040')
+                        : '#404040';
+                    const textColor = (layoutInstance && typeof layoutInstance.getTextColorForBackground === 'function')
+                        ? (layoutInstance.getTextColorForBackground(bgColor) || 'white')
+                        : 'white';
                     const fontSize = easel.length <= 2 ? 12 : easel.length <= 4 ? 10 : easel.length <= 6 ? 9 : 8;
                     window.posterMap.infoTitle.innerHTML = `
                         <span class="easel-pill" data-easel="${easel}">
@@ -1291,43 +1376,49 @@ class LayoutAPI {
         
         const positionInfoPanelSmart = (markerElement, poster) => {
             const panel = window.posterMap.infoPanel;
-            
+            const clamp = (value, min, max) => {
+                if (max < min) {
+                    return min;
+                }
+                return Math.min(Math.max(value, min), max);
+            };
+
             // Calculate content length to determine tooltip size
-            const totalContentLength = (poster.title || '').length + 
-                                     (poster.students || poster.authors || '').length + 
-                                     (poster.facultyMentor || '').length + 
+            const totalContentLength = (poster.title || '').length +
+                                     (poster.students || poster.authors || '').length +
+                                     (poster.facultyMentor || '').length +
                                      (poster.category || '').length;
-            
+
             // Dynamic sizing based on content length
             const isMobile = window.innerWidth <= 768;
             const basePanelWidth = isMobile ? 220 : 280;
             const basePanelHeight = isMobile ? 120 : 160;
-            
+
             // Adjust dimensions for longer content
             const contentFactor = Math.min(totalContentLength / 200, 1.5); // Cap at 1.5x size
-            const panelWidth = Math.floor(basePanelWidth * (1 + contentFactor * 0.3)); // Up to 30% wider
-            const panelHeight = Math.floor(basePanelHeight * (1 + contentFactor * 0.4)); // Up to 40% taller
-            
+            let panelWidth = Math.floor(basePanelWidth * (1 + contentFactor * 0.3)); // Up to 30% wider
+            let panelHeight = Math.floor(basePanelHeight * (1 + contentFactor * 0.4)); // Up to 40% taller
+
             // Calculate dynamic arrow size early for use in positioning
             const baseArrowSize = isMobile ? 9 : 12;
             const sizeMultiplier = Math.min(contentFactor, 1.3); // Cap multiplier
             const dynamicArrowSize = Math.floor(baseArrowSize * (1 + sizeMultiplier * 0.4)); // Up to 40% larger
-            
+
             // Dynamic gap based on tooltip size - keep close while preserving hover buffer
             const baseGap = isMobile ? 22 : 30;
             const hoverBuffer = dynamicArrowSize + (isMobile ? 6 : 10);
             const dynamicGap = baseGap + Math.max(panelHeight - basePanelHeight, 0) * 0.18;
             const gap = Math.max(hoverBuffer, Math.floor(dynamicGap));
             const margin = isMobile ? 15 : 20;
-            
+
             // Get marker position relative to viewport
             const markerRect = markerElement.getBoundingClientRect();
             const markerCenterX = markerRect.left + markerRect.width / 2;
             const markerCenterY = markerRect.top + markerRect.height / 2;
-            
+
             // Check if marker is actually visible in viewport
-            if (markerRect.left < -50 || markerRect.top < -50 || 
-                markerRect.left > window.innerWidth + 50 || 
+            if (markerRect.left < -50 || markerRect.top < -50 ||
+                markerRect.left > window.innerWidth + 50 ||
                 markerRect.top > window.innerHeight + 50) {
                 // Marker is off-screen, use fallback positioning
                 panel.style.position = 'fixed';
@@ -1339,94 +1430,158 @@ class LayoutAPI {
                 panel.style.removeProperty('--arrow-position');
                 return;
             }
-            
+
             const viewWidth = window.innerWidth;
             const viewHeight = window.innerHeight;
-            
-            let panelX, panelY, arrowSide, arrowPosition;
-            
-            // Adjust zones based on zoom level for better positioning when zoomed in
-            const currentZoom = window.posterMap ? window.posterMap.currentZoom : 1;
-            const zoomFactor = Math.min(currentZoom / 4, 1); // Reduce zone sensitivity when zoomed in
-            
-            // More conservative zones when zoomed in to prevent tooltips going off-screen
-            const topZone = viewHeight * (0.25 + 0.1 * zoomFactor);
-            const bottomZone = viewHeight * (0.75 - 0.1 * zoomFactor);
-            const leftZone = viewWidth * (0.4 + 0.1 * zoomFactor);
-            const rightZone = viewWidth * (0.6 - 0.1 * zoomFactor);
-            
-            if (markerCenterY < topZone) {
-                // Top zone - position below marker
-                panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
-                panelY = Math.min(viewHeight - panelHeight - margin, markerCenterY + gap);
-                arrowSide = 'top';
-                // Better arrow position constraints - ensure arrow stays well within bounds
-                const arrowBuffer = dynamicArrowSize + 5; // Extra buffer based on arrow size
-                arrowPosition = Math.max(arrowBuffer, Math.min(panelWidth - arrowBuffer, markerCenterX - panelX));
-                
-            } else if (markerCenterY > bottomZone) {
-                // Bottom zone - position well above marker
-                panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
-                panelY = Math.max(margin, markerCenterY - panelHeight - gap - 50); // Much larger buffer
+            const mapContainer = document.querySelector('.map-container');
+            const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : null;
+
+            if (mapRect) {
+                const maxWidthWithinMap = Math.max(160, mapRect.width - margin * 2);
+                panelWidth = Math.min(panelWidth, Math.floor(maxWidthWithinMap));
+                const maxHeightWithinMap = Math.max(isMobile ? 120 : 140, mapRect.height - margin * 2);
+                panelHeight = Math.min(panelHeight, Math.floor(maxHeightWithinMap));
+            }
+
+            const availableLeft = markerCenterX - (mapRect ? mapRect.left + margin : margin);
+            const availableRight = (mapRect ? mapRect.right - margin : viewWidth - margin) - markerCenterX;
+            const availableTop = markerCenterY - (mapRect ? mapRect.top + margin : margin);
+            const availableBottom = (mapRect ? mapRect.bottom - margin : viewHeight - margin) - markerCenterY;
+
+            const orientationDimensions = {
+                above: { width: panelWidth, height: panelHeight },
+                below: { width: panelWidth, height: panelHeight },
+                right: { width: panelWidth, height: panelHeight },
+                left: { width: panelWidth, height: panelHeight }
+            };
+
+            if (isMobile) {
+                const widenedWidth = Math.round(panelWidth * 1.15);
+                const trimmedHeight = Math.max(Math.round(panelHeight * 0.72), Math.round(basePanelHeight * 0.65));
+                orientationDimensions.above = {
+                    width: widenedWidth,
+                    height: trimmedHeight
+                };
+            }
+
+            const canPlaceAbove = availableTop >= orientationDimensions.above.height + gap;
+            const canPlaceBelow = availableBottom >= orientationDimensions.below.height + gap;
+            const canPlaceRight = availableRight >= orientationDimensions.right.width + gap;
+            const canPlaceLeft = availableLeft >= orientationDimensions.left.width + gap;
+
+            let chosenOrientation;
+            let arrowSide;
+            let tightPlacement = false;
+
+            if (canPlaceAbove) {
+                chosenOrientation = 'above';
                 arrowSide = 'bottom';
-                // Better arrow position constraints - ensure arrow stays well within bounds
-                const arrowBuffer = dynamicArrowSize + 5; // Extra buffer based on arrow size
-                arrowPosition = Math.max(arrowBuffer, Math.min(panelWidth - arrowBuffer, markerCenterX - panelX));
-                
-            } else {
-                // Middle zone - position to the side, but check space available
-                const spaceLeft = markerCenterX - margin;
-                const spaceRight = viewWidth - markerCenterX - margin;
-                const spaceTop = markerCenterY - margin;
-                const spaceBottom = viewHeight - markerCenterY - margin;
-                
-                // Choose the side with more space, preferring horizontal positioning
-                if (spaceRight > panelWidth + gap && spaceRight > spaceLeft) {
-                    // Position to the right
-                    panelX = Math.min(viewWidth - panelWidth - margin, markerCenterX + gap);
-                    panelY = Math.max(margin, Math.min(viewHeight - panelHeight - margin, markerCenterY - panelHeight/2));
+            } else if (canPlaceBelow && availableBottom >= availableTop) {
+                chosenOrientation = 'below';
+                arrowSide = 'top';
+            } else if (canPlaceRight || canPlaceLeft) {
+                if (canPlaceRight && (!canPlaceLeft || availableRight >= availableLeft)) {
+                    chosenOrientation = 'right';
                     arrowSide = 'left';
-                    // Better arrow position constraints for vertical arrows
-                    const arrowBuffer = dynamicArrowSize + 5;
-                    arrowPosition = Math.max(arrowBuffer, Math.min(panelHeight - arrowBuffer, markerCenterY - panelY));
-                } else if (spaceLeft > panelWidth + gap) {
-                    // Position to the left
-                    panelX = Math.max(margin, markerCenterX - panelWidth - gap);
-                    panelY = Math.max(margin, Math.min(viewHeight - panelHeight - margin, markerCenterY - panelHeight/2));
-                    arrowSide = 'right';
-                    // Better arrow position constraints for vertical arrows
-                    const arrowBuffer = dynamicArrowSize + 5;
-                    arrowPosition = Math.max(arrowBuffer, Math.min(panelHeight - arrowBuffer, markerCenterY - panelY));
-                } else if (spaceBottom > panelHeight + gap) {
-                    // Fall back to below
-                    panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
-                    panelY = Math.min(viewHeight - panelHeight - margin, markerCenterY + gap);
-                    arrowSide = 'top';
-                    const arrowBuffer = dynamicArrowSize + 5;
-                    arrowPosition = Math.max(arrowBuffer, Math.min(panelWidth - arrowBuffer, markerCenterX - panelX));
                 } else {
-                    // Fall back to above (tooltip should be clearly above marker)
-                    panelX = Math.max(margin, Math.min(viewWidth - panelWidth - margin, markerCenterX - panelWidth/2));
-                    panelY = Math.max(margin, markerCenterY - panelHeight - gap - 50); // Much larger buffer
-                    arrowSide = 'bottom';
-                    const arrowBuffer = dynamicArrowSize + 5;
-                    arrowPosition = Math.max(arrowBuffer, Math.min(panelWidth - arrowBuffer, markerCenterX - panelX));
+                    chosenOrientation = 'left';
+                    arrowSide = 'right';
+                }
+            } else if (canPlaceBelow) {
+                chosenOrientation = 'below';
+                arrowSide = 'top';
+            } else {
+                chosenOrientation = 'above';
+                arrowSide = 'bottom';
+                tightPlacement = true;
+            }
+
+            const chosenDimensions = orientationDimensions[chosenOrientation] || {};
+            let chosenWidth = chosenDimensions.width || panelWidth;
+            let chosenHeight = chosenDimensions.height || panelHeight;
+
+            if (mapRect) {
+                const maxWidthWithinMap = Math.max(160, mapRect.width - margin * 2);
+                const maxHeightWithinMap = Math.max(isMobile ? 110 : 140, mapRect.height - margin * 2);
+                chosenWidth = Math.min(chosenWidth, Math.floor(maxWidthWithinMap));
+                chosenHeight = Math.min(chosenHeight, Math.floor(maxHeightWithinMap));
+            }
+
+            const minHeight = Math.max(Math.round(basePanelHeight * (isMobile ? 0.65 : 0.75)), 80);
+            chosenHeight = Math.max(minHeight, Math.round(chosenHeight));
+            chosenWidth = Math.round(chosenWidth);
+
+            let panelX;
+            let panelY;
+
+            switch (chosenOrientation) {
+                case 'above': {
+                    const verticalGap = tightPlacement
+                        ? Math.max(8, Math.min(gap, chosenHeight / 3))
+                        : gap;
+                    panelX = markerCenterX - chosenWidth / 2;
+                    panelY = markerCenterY - chosenHeight - verticalGap;
+                    break;
+                }
+                case 'below':
+                    panelX = markerCenterX - chosenWidth / 2;
+                    panelY = markerCenterY + gap;
+                    break;
+                case 'right':
+                    panelX = markerCenterX + gap;
+                    panelY = markerCenterY - chosenHeight / 2;
+                    break;
+                case 'left':
+                    panelX = markerCenterX - chosenWidth - gap;
+                    panelY = markerCenterY - chosenHeight / 2;
+                    break;
+                default:
+                    panelX = markerCenterX - chosenWidth / 2;
+                    panelY = markerCenterY - chosenHeight - gap;
+            }
+
+            let minX = margin;
+            let maxX = viewWidth - chosenWidth - margin;
+            let minY = margin;
+            let maxY = viewHeight - chosenHeight - margin;
+
+            if (mapRect) {
+                minX = Math.max(minX, mapRect.left + margin);
+                maxX = Math.min(maxX, mapRect.right - chosenWidth - margin);
+                minY = Math.max(minY, mapRect.top + margin);
+                maxY = Math.min(maxY, mapRect.bottom - chosenHeight - margin);
+                if (maxX < minX) {
+                    maxX = minX;
+                }
+                if (maxY < minY) {
+                    maxY = minY;
                 }
             }
-            
+
+            panelX = clamp(panelX, minX, maxX);
+            panelY = clamp(panelY, minY, maxY);
+
+            const arrowBuffer = dynamicArrowSize + 4;
+            let arrowPosition;
+            if (arrowSide === 'top' || arrowSide === 'bottom') {
+                arrowPosition = clamp(markerCenterX - panelX, arrowBuffer, chosenWidth - arrowBuffer);
+            } else {
+                arrowPosition = clamp(markerCenterY - panelY, arrowBuffer, chosenHeight - arrowBuffer);
+            }
+
             // Apply positioning and dynamic sizing
             panel.style.position = 'fixed';
-            panel.style.left = `${panelX}px`;
-            panel.style.top = `${panelY}px`;
+            panel.style.left = `${Math.round(panelX)}px`;
+            panel.style.top = `${Math.round(panelY)}px`;
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
-            panel.style.width = `${panelWidth}px`;
-            panel.style.height = 'auto'; // Let height adjust to content
-            panel.style.minHeight = `${panelHeight}px`;
-            
+            panel.style.width = `${Math.round(chosenWidth)}px`;
+            panel.style.minHeight = `${Math.round(chosenHeight)}px`;
+            panel.style.height = 'auto';
+
             // Set arrow properties
             panel.style.setProperty('--arrow-side', arrowSide);
-            panel.style.setProperty('--arrow-position', `${arrowPosition}px`);
+            panel.style.setProperty('--arrow-position', `${Math.round(arrowPosition)}px`);
             panel.style.setProperty('--arrow-size', `${dynamicArrowSize}px`);
         };
 
@@ -1572,11 +1727,13 @@ class LayoutAPI {
             
             const values = line.split('\t');
             if (values.length >= 4) {
+                const mountIdRaw = values[mountIdIndex];
+                const orientationRaw = values[orientationIndex];
                 const mount = {
-                    mountId: values[mountIdIndex]?.trim(),
+                    mountId: mountIdRaw ? mountIdRaw.trim() : '',
                     xCoord: parseFloat(values[xCoordIndex]) || 0,
                     yCoord: parseFloat(values[yCoordIndex]) || 0,
-                    orientation: values[orientationIndex]?.trim().toLowerCase() || 'vertical'
+                    orientation: orientationRaw ? orientationRaw.trim().toLowerCase() : 'vertical'
                 };
                 
                 mounts.push(mount);
