@@ -917,8 +917,6 @@ class LayoutAPI {
             activateMarker();
 
             // Show mount ID in console for dev debugging
-            console.log(`Mount ID: ${config.id}`);
-
             showPosterInfo();
         });
 
@@ -1153,7 +1151,6 @@ class LayoutAPI {
         const attachInteractiveHandlers = (side, indicator, text) => {
             indicator.addEventListener('mouseenter', () => {
                 activateIndicator(indicator, text);
-                console.log(`Mount ID: ${config.id}`);
                 showPosterInfo(side);
             });
 
@@ -1477,8 +1474,6 @@ class LayoutAPI {
             
             const posters = this.parsePosterTSV(posterTsvText);
             const mounts = this.parseMountTSV(mountTsvText);
-            
-            console.log(`Loaded ${posters.length} posters and ${mounts.length} mounts from TSV files`);
             
             // Create poster mounts from the combined data
             this.createPosterMountsFromSeparateData(posters, mounts, layoutConfig);

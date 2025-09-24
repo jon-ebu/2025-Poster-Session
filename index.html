@@ -981,7 +981,9 @@ body.map-fullscreen .table-responsive {
 <body>
     <div class="header">
         <div class="header-content">
-            <img src="assets/HMC BGW RGB 150dpi.png" alt="HMC Logo" class="header-logo">
+            <a href="https://www.hmc.edu/" target="_blank" rel="noopener noreferrer">
+                <img src="assets/HMC BGW RGB 150dpi.png" alt="HMC Logo" class="header-logo">
+            </a>
             <h1>HMC Poster Session <span class="subheading">Fall 2025</span></h1>
         </div>
     </div>
@@ -1383,25 +1385,17 @@ body.map-fullscreen .table-responsive {
             // Add click listeners to table rows for marker highlighting
             $('#tsvTable tbody tr').on('click', function(e) {
                 // Step 1: Click row → get easelBoard from row data
-                console.log('=== STEP 1: Click row → get easelBoard from row data ===');
                 const easelBoard = $(this).data('easel');
                 const isCurrentlySelected = $(this).hasClass('selected');
-                console.log('easelBoard from row data:', easelBoard);
-                console.log('isCurrentlySelected:', isCurrentlySelected);
-                
                 if (easelBoard) {
                     if (isCurrentlySelected) {
                         // Step 6: Toggle row → remove selected on the table row
-                        console.log('=== STEP 6: Toggle row → remove selected on the table row ===');
                         clearTableSelection();
                     } else {
                         // Step 2: Find marker → search allMarkers for matching easelBoardId
-                        console.log('=== STEP 2: Find marker → search allMarkers for matching easelBoardId ===');
-
                         applyRowSelection(this);
                     }
                 } else {
-                    console.log('ERROR: No easelBoard found for this row');
                 }
             });
 
@@ -1422,16 +1416,12 @@ body.map-fullscreen .table-responsive {
             const row = rowElement instanceof HTMLElement ? rowElement : rowElement?.[0];
 
             if (!row) {
-                console.log('applyRowSelection called without a valid row element');
                 return null;
             }
 
             const $row = $(row);
             const easelBoard = $row.data('easel');
-            console.log('applyRowSelection easelBoard:', easelBoard);
-
             if (!easelBoard) {
-                console.log('applyRowSelection: No easelBoard found for row');
                 return null;
             }
 
@@ -1441,7 +1431,6 @@ body.map-fullscreen .table-responsive {
 
             const highlightedMarker = highlightMarkerByEasel(easelBoard, { deferTooltip: true });
 
-            console.log('=== STEP 4: Fade others → add marker-faded to non-selected markers ===');
             fadeOtherMarkers(highlightedMarker);
 
             const triggerTooltip = () => {
@@ -1475,10 +1464,7 @@ body.map-fullscreen .table-responsive {
                 }
             }
 
-            console.log('=== STEP 6: Toggle row → add selected on the table row ===');
             $row.addClass('selected');
-            console.log('Added selected class to row');
-
             $('#tsvTable tbody tr').not($row).removeClass('selected');
 
             if (scrollIntoView && typeof row.scrollIntoView === 'function') {
@@ -1510,9 +1496,6 @@ body.map-fullscreen .table-responsive {
 
         function highlightMarkerByEasel(easelBoard, options = {}) {
             const { deferTooltip = false } = options;
-            console.log(`Function called with easelBoard: ${easelBoard}`);
-            console.log(`allMarkers array length: ${allMarkers.length}`);
-            
             removeMarkerHighlights();
             clearSiblingFade();
             
@@ -1521,13 +1504,10 @@ body.map-fullscreen .table-responsive {
             allMarkers.forEach((markerData, index) => {
                 if (markerData.easelBoardId === easelBoard) {
                     targetMarkerData = markerData;
-                    console.log(`✓ MATCH FOUND at index ${index} for easel: ${easelBoard}`);
                 }
             });
             
             if (!targetMarkerData) {
-                console.log(`✗ NO MATCH FOUND for easel: ${easelBoard}`);
-                console.log('Available easel board IDs:', allMarkers.map(m => m.easelBoardId));
                 return null;
             }
             
@@ -1543,7 +1523,6 @@ body.map-fullscreen .table-responsive {
                 targetMarkerData.coordinates = computeMarkerCoordinates(markerGroup, markerCircle);
             }
 
-            console.log('=== STEP 3: Highlight → add marker-highlight to the target marker ===');
             markerGroup.classList.remove('marker-faded');
             markerGroup.querySelectorAll('circle').forEach(circle => {
                 circle.classList.remove('marker-focused');
@@ -1551,18 +1530,13 @@ body.map-fullscreen .table-responsive {
             
             markerCircle.classList.add('marker-highlight');
             markerCircle.classList.add('marker-focused');
-            console.log('✓ Highlight classes applied to marker circle');
-            console.log('Marker circle classes:', markerCircle.classList.toString());
-            
             if (!deferTooltip) {
-                console.log('=== STEP 5: Show tooltip → dispatch mouseenter on the target marker ===');
                 const mouseEnterEvent = new MouseEvent('mouseenter', {
                     view: window,
                     bubbles: true,
                     cancelable: true
                 });
                 markerCircle.dispatchEvent(mouseEnterEvent);
-                console.log('✓ Mouseenter event dispatched successfully');
             }
             
             applySiblingFade(targetMarkerData);
@@ -1583,15 +1557,11 @@ body.map-fullscreen .table-responsive {
         // Fade other markers when one is selected
         function fadeOtherMarkers(selectedMarker) {
             if (!selectedMarker) {
-                console.log('No selected marker provided — restoring opacity.');
                 restoreMarkerOpacity();
                 return;
             }
 
             const selectedMountId = selectedMarker?.mountId || null;
-
-            console.log('selectedMarker:', selectedMarker);
-            console.log('allMarkers length:', allMarkers.length);
 
             const processedGroups = new Set();
             let fadedCount = 0;
@@ -1601,7 +1571,6 @@ body.map-fullscreen .table-responsive {
                 const markerCircle = markerData.circle || markerGroup;
 
                 if (!markerGroup) {
-                    console.log(`ERROR: markerGroup is null for marker ${index}`);
                     return;
                 }
 
@@ -1614,7 +1583,6 @@ body.map-fullscreen .table-responsive {
                 }
 
                 if (!processedGroups.has(markerGroup)) {
-                    console.log(`Adding marker-faded class to marker group ${index} (${markerData.easelBoardId})`);
                     markerGroup.classList.add('marker-faded');
                     processedGroups.add(markerGroup);
                     fadedCount++;
@@ -1627,7 +1595,6 @@ body.map-fullscreen .table-responsive {
 
             applySiblingFade(selectedMarker);
 
-            console.log(`✓ Faded ${fadedCount} marker groups successfully`);
         }
         
         // Restore all marker opacity
@@ -1653,8 +1620,6 @@ body.map-fullscreen .table-responsive {
 
         // Fade out all markers except the hovered one (for hover effects)
         function fadeOtherMarkersOnHover(hoveredMarker) {
-            console.log('fadeOtherMarkersOnHover called, total markers:', allMarkers.length);
-
             document.body.classList.add('marker-hover-active');
             clearSiblingFade();
 
@@ -1687,7 +1652,6 @@ body.map-fullscreen .table-responsive {
                 }
             });
 
-            console.log(`Applied marker-faded to ${fadedCount} markers, marker-focused to ${focusedCount} markers`);
         }
 
 
@@ -1864,10 +1828,6 @@ body.map-fullscreen .table-responsive {
                     const lines = data.trim().split('\n');
                     const tableData = lines.map(line => line.split('\t'));
                     
-                    console.log('=== TABLE DATA DEBUG ===');
-                    console.log('Table data loaded:', tableData.length, 'rows');
-                    console.log('Headers:', tableData[0]);
-                    
                     // Check easel board IDs in the table data
                     const easelBoardColumnIndex = tableData[0].indexOf('Easel Board');
                     if (easelBoardColumnIndex !== -1) {
@@ -1877,9 +1837,6 @@ body.map-fullscreen .table-responsive {
                                 easelBoardIds.push(tableData[i][easelBoardColumnIndex]);
                             }
                         }
-                    console.log('Easel Board IDs in table data:', easelBoardIds);
-                    console.log('Unique Easel Board IDs:', [...new Set(easelBoardIds)]);
-                    
                     // Compare with registered markers
                     if (allMarkers.length > 0) {
                         const tableEaselIds = new Set(easelBoardIds);
@@ -1888,8 +1845,6 @@ body.map-fullscreen .table-responsive {
                         const missingInMarkers = [...tableEaselIds].filter(id => !markerEaselIds.has(id));
                         const missingInTable = [...markerEaselIds].filter(id => !tableEaselIds.has(id));
                         
-                        console.log('Easel IDs in table but NOT in markers:', missingInMarkers);
-                        console.log('Easel IDs in markers but NOT in table:', missingInTable);
                     }
                     }
                     
@@ -1905,16 +1860,12 @@ body.map-fullscreen .table-responsive {
         function initializeLayout() {
             // Wait for both posterMap instance and PosterSessionMap class
             if (!window.posterMap || !window.PosterSessionMap || !window.LayoutAPI) {
-                console.log('Waiting for dependencies to load...');
                 setTimeout(initializeLayout, 100);
                 return;
             }
             
-            console.log('All dependencies loaded - initializing Layout API');
-            
             // Ensure the Layout API method is available
             if (!window.posterMap.initializeLayoutAPI) {
-                console.log('Adding initializeLayoutAPI method to posterMap instance');
                 window.PosterSessionMap.prototype.initializeLayoutAPI = function() {
                     this.layout = new LayoutAPI(this);
                     return this.layout;
@@ -1927,7 +1878,7 @@ body.map-fullscreen .table-responsive {
             // Add Parsons building using Layout API (updated version with integrated garden boxes)
             layout.addSVG({
                 id: 'parsons-building',
-                svgFile: 'assets/svg/parsons.svg',
+                svgFile: 'assets/svg/Parsons.svg',
                 position: { x: 150, y: 40 }, // Same relative distance from Strauss as Jacobs Keck
                 style: { fill: '#C3BAA8' }, // Warm beige
                 interactive: false
@@ -1952,7 +1903,7 @@ body.map-fullscreen .table-responsive {
                 // Add Strauss Plaza positioned at specified coordinates, centered relative to buildings
                 layout.addSVG({
                     id: 'strauss-plaza',
-                    svgFile: 'assets/svg/strauss plaza.svg',
+                    svgFile: 'assets/svg/Strauss Plaza.svg',
                     position: { x: 226, y: 474 }, // Vertically centered between Parsons and Jacobs Keck
                     style: { fill: '#EBDEC2', stroke: '#D4C4A8', strokeWidth: '1' }, // Warm beige color for plaza with subtle outline
                     interactive: false
@@ -2020,10 +1971,8 @@ body.map-fullscreen .table-responsive {
                 });
 
                 // Register markers for table interaction
-                function rebuildMarkerRegistry(contextLabel = 'initial') {
-                    console.log(`=== MARKER REGISTRATION (${contextLabel}) ===`);
+                function rebuildMarkerRegistry() {
                     if (!window.layout || !window.layout.layoutElements || window.layout.layoutElements.size === 0) {
-                        console.log('Layout elements unavailable; skipping marker registration');
                         return false;
                     }
 
@@ -2113,27 +2062,18 @@ body.map-fullscreen .table-responsive {
                         }
                     });
 
-                    console.log(`Registered ${allMarkers.length} markers for table interaction`);
-                    if (allMarkers.length > 0) {
-                        console.log('Sample marker data:', allMarkers[0]);
-                        console.log('All easel board IDs:', allMarkers.map(m => m.easelBoardId));
-                    }
-
                     return allMarkers.length > 0;
                 }
 
-                rebuildMarkerRegistry('initial');
+                rebuildMarkerRegistry();
 
                 // Try to register markers again after a delay in case the layout is still loading
                 setTimeout(() => {
-                    if (!rebuildMarkerRegistry('delayed')) {
-                        console.log('Layout elements still not available after delay');
-                    }
+                    rebuildMarkerRegistry();
                 }, 2000);
 
                 // Make layout API available globally for easy testing
                 window.layout = layout;
-                console.log('Layout API initialized. Use window.layout to add elements.');
         }
         
         // Prevent zoom out beyond initial scale for map SVG only
@@ -2156,6 +2096,7 @@ body.map-fullscreen .table-responsive {
         
         // Start initialization when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('made by jon ebueng from CIS :)');
             initializeLayout();
             loadTableData();
             preventMapZoomOut(); // Initial check
