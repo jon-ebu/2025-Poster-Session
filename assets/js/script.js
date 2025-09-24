@@ -17,6 +17,10 @@ class PosterSessionMap {
         this.panVelocityY = 0;
         this.panInertiaFrame = null;
         this.selectedArea = null;
+        this.panAnimationFrame = null;
+
+        this.baseWidth = 1150;
+        this.baseHeight = 1360;
         
         this.initializeData();
         this.initializeEventListeners();
@@ -72,6 +76,7 @@ let isPanning = false;
             initialPanX = this.panX;
             initialPanY = this.panY;
             this.stopPanInertia(true);
+            this.stopPanAnimation();
             lastPointerTime = 0;
             lastPointerX = clientX;
             lastPointerY = clientY;
@@ -317,12 +322,14 @@ let isPanning = false;
 
     zoomIn() {
         this.stopPanInertia(true);
+        this.stopPanAnimation();
         this.currentZoom = Math.min(this.maxZoom, this.currentZoom * 1.2);
         this.updateViewBox();
     }
 
     zoomOut() {
         this.stopPanInertia(true);
+        this.stopPanAnimation();
         const nextZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.currentZoom / 1.2));
         this.currentZoom = nextZoom;
         this.updateViewBox();
@@ -330,6 +337,7 @@ let isPanning = false;
 
     resetView() {
         this.stopPanInertia(true);
+        this.stopPanAnimation();
         this.currentZoom = 1;
         this.panX = 0;
         this.panY = 0;
@@ -338,14 +346,87 @@ let isPanning = false;
     }
 
     updateViewBox() {
-        const baseWidth = 1150;
-        const baseHeight = 1360;
-        const width = baseWidth / this.currentZoom;
-        const height = baseHeight / this.currentZoom;
-        const x = -this.panX + (baseWidth - width) / 2;
-        const y = -this.panY + (baseHeight - height) / 2;
-        
+        const width = this.baseWidth / this.currentZoom;
+        const height = this.baseHeight / this.currentZoom;
+        const x = -this.panX + (this.baseWidth - width) / 2;
+        const y = -this.panY + (this.baseHeight - height) / 2;
+
         this.svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+    }
+
+    stopPanAnimation() {
+        if (this.panAnimationFrame) {
+            cancelAnimationFrame(this.panAnimationFrame);
+            this.panAnimationFrame = null;
+        }
+    }
+
+    centerOnCoordinates(x, y, options = {}) {
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            return;
+        }
+
+        const { animate = true, duration = 300 } = options;
+
+        this.stopPanInertia(true);
+        this.stopPanAnimation();
+
+        const targetPan = this.calculatePanForCoordinates(x, y);
+
+        if (animate && duration > 0) {
+            this.animatePan(targetPan.panX, targetPan.panY, duration);
+        } else {
+            this.panX = targetPan.panX;
+            this.panY = targetPan.panY;
+            this.updateViewBox();
+        }
+    }
+
+    calculatePanForCoordinates(x, y) {
+        const width = this.baseWidth / this.currentZoom;
+        const height = this.baseHeight / this.currentZoom;
+
+        const minX = 0;
+        const minY = 0;
+        const maxX = Math.max(minX, this.baseWidth - width);
+        const maxY = Math.max(minY, this.baseHeight - height);
+
+        const desiredX = x - width / 2;
+        const desiredY = y - height / 2;
+
+        const clampedX = Math.min(Math.max(desiredX, minX), maxX);
+        const clampedY = Math.min(Math.max(desiredY, minY), maxY);
+
+        return {
+            panX: (this.baseWidth - width) / 2 - clampedX,
+            panY: (this.baseHeight - height) / 2 - clampedY
+        };
+    }
+
+    animatePan(targetPanX, targetPanY, duration = 300) {
+        const startPanX = this.panX;
+        const startPanY = this.panY;
+        const startTime = performance.now();
+
+        const step = (now) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = progress < 0.5
+                ? 2 * progress * progress
+                : -1 + (4 - 2 * progress) * progress;
+
+            this.panX = startPanX + (targetPanX - startPanX) * eased;
+            this.panY = startPanY + (targetPanY - startPanY) * eased;
+            this.updateViewBox();
+
+            if (progress < 1) {
+                this.panAnimationFrame = requestAnimationFrame(step);
+            } else {
+                this.panAnimationFrame = null;
+            }
+        };
+
+        this.panAnimationFrame = requestAnimationFrame(step);
     }
 
     stopPanInertia(resetVelocity = false) {

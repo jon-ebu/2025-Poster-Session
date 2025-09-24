@@ -4,6 +4,7 @@ class LayoutAPI {
         this.map = mapInstance;
         this.layoutElements = new Map();
         this.svgCache = new Map();
+        this.loneMarkerBoards = new Set(['HC-1', 'P-13']);
         
         // Create a dedicated layer for poster mounts to ensure they're always on top
         this.posterLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -68,6 +69,9 @@ class LayoutAPI {
             case "HC":
                 color = "#FFD700"; // gold (HC-1)
                 break;
+            case "BHC":
+                color = "#FFD700"; // gold (BHC-1 matches HC color)
+                break;
             case "HSA":
                 color = "#20B2AA"; // light teal (HSA-1)
                 break;
@@ -85,6 +89,10 @@ class LayoutAPI {
         }
 
         return color;
+    }
+
+    isLoneMarkerBoard(easelBoard) {
+        return easelBoard ? this.loneMarkerBoards.has(easelBoard) : false;
     }
 
     /**
@@ -540,14 +548,17 @@ class LayoutAPI {
      * @param {Object} config.position - Position configuration
      * @param {number} config.position.x - X coordinate
      * @param {number} config.position.y - Y coordinate
+     * @param {string} [config.orientation] - 'vertical' or 'horizontal' board orientation
      * @param {Object} config.poster - Poster information
      * @param {Object} [config.style] - Style overrides
      */
     addLoneMarker(config) {
-        const element = this.createLoneMarkerElement(config);
+        const orientation = (config.orientation || 'vertical').toLowerCase();
+        const element = this.createLoneMarkerElement({ ...config, orientation });
         
         this.layoutElements.set(config.id, {
             ...config,
+            orientation,
             element: element,
             type: 'lone-marker'
         });
@@ -568,6 +579,23 @@ class LayoutAPI {
         if (transform) {
             group.setAttribute('transform', transform);
         }
+
+        const orientation = (config.orientation || 'vertical').toLowerCase();
+        const isVertical = orientation === 'vertical';
+        const boardWidth = isVertical ? 16 : 60;
+        const boardHeight = isVertical ? 60 : 16;
+
+        const board = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        board.setAttribute('x', -boardWidth / 2);
+        board.setAttribute('y', -boardHeight / 2);
+        board.setAttribute('width', boardWidth);
+        board.setAttribute('height', boardHeight);
+        board.setAttribute('rx', 2);
+        board.setAttribute('fill', config.style?.boardFill || '#404040');
+        board.setAttribute('stroke', config.style?.boardStroke || '#202020');
+        board.setAttribute('stroke-width', config.style?.boardStrokeWidth || 1);
+        board.setAttribute('pointer-events', 'none');
+        group.appendChild(board);
 
         // Create the marker circle
         const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -670,12 +698,24 @@ class LayoutAPI {
                 }
                 
                 if (window.posterMap) {
-                    window.posterMap.infoTitle.textContent = `${config.poster.title || 'Poster Information'}`;
+                    const easel = config.poster.easelBoard || 'N/A';
+                    const title = config.poster.title || 'Poster Information';
+                    const bgColor = window.layout?.getColorByEaselBoardId?.(easel) || '#404040';
+                    const textColor = window.layout?.getTextColorForBackground?.(bgColor) || 'white';
+                    const fontSize = easel.length <= 2 ? 12 : easel.length <= 4 ? 10 : easel.length <= 6 ? 9 : 8;
+                    window.posterMap.infoTitle.innerHTML = `
+                        <span class="easel-pill" data-easel="${easel}">
+                            <svg class="easel-pill__svg" viewBox="0 0 36 36" role="presentation">
+                                <circle cx="18" cy="18" r="16" fill="${bgColor}" stroke="white" stroke-width="2"></circle>
+                                <text x="18" y="18" fill="${textColor}" font-size="${fontSize}" dominant-baseline="middle" text-anchor="middle">${easel}</text>
+                            </svg>
+                        </span>
+                        <span class="title-text">${title}</span>
+                    `;
                     window.posterMap.infoDescription.innerHTML = `
                         <p><strong>Student(s):</strong> ${config.poster.students || 'N/A'}</p>
                         <p><strong>Faculty/Mentor:</strong> ${config.poster.facultyMentor || 'N/A'}</p>
                         <p><strong>Poster Category:</strong> ${config.poster.category || 'N/A'}</p>
-                        <p><strong>Easel Board:</strong> ${config.poster.easelBoard || 'N/A'}</p>
                     `;
                     
                     // Position based on marker location and content length
@@ -1163,12 +1203,24 @@ class LayoutAPI {
                 }
                 
                 if (window.posterMap) {
-                    window.posterMap.infoTitle.textContent = `${poster.title || 'Poster Information'}`;
+                    const easel = poster.easelBoard || poster.session || 'N/A';
+                    const title = poster.title || 'Poster Information';
+                    const bgColor = window.layout?.getColorByEaselBoardId?.(easel) || '#404040';
+                    const textColor = window.layout?.getTextColorForBackground?.(bgColor) || 'white';
+                    const fontSize = easel.length <= 2 ? 12 : easel.length <= 4 ? 10 : easel.length <= 6 ? 9 : 8;
+                    window.posterMap.infoTitle.innerHTML = `
+                        <span class="easel-pill" data-easel="${easel}">
+                            <svg class="easel-pill__svg" viewBox="0 0 36 36" role="presentation">
+                                <circle cx="18" cy="18" r="16" fill="${bgColor}" stroke="white" stroke-width="2"></circle>
+                                <text x="18" y="18" fill="${textColor}" font-size="${fontSize}" dominant-baseline="middle" text-anchor="middle">${easel}</text>
+                            </svg>
+                        </span>
+                        <span class="title-text">${title}</span>
+                    `;
                     window.posterMap.infoDescription.innerHTML = `
                         <p><strong>Student(s):</strong> ${poster.students || poster.authors || 'N/A'}</p>
                         <p><strong>Faculty/Mentor:</strong> ${poster.facultyMentor || 'N/A'}</p>
                         <p><strong>Poster Category:</strong> ${poster.category || 'N/A'}</p>
-                        <p><strong>Easel Board:</strong> ${poster.easelBoard || poster.session || 'N/A'}</p>
                     `;
                     
                     // Position based on marker location and content length
@@ -1510,24 +1562,21 @@ class LayoutAPI {
             const mountData = mountMap.get(mountId);
             if (!mountData) return;
             
-            // Special case: HC-1 should be a lone marker instead of a mount
-            const hasHC1 = mountPosters.some(poster => poster.easelBoard === 'HC-1');
-            if (hasHC1) {
-                const hc1Poster = mountPosters.find(poster => poster.easelBoard === 'HC-1');
-                if (hc1Poster) {
-                    this.addLoneMarker({
-                        id: `lone-marker-${hc1Poster.easelBoard}`,
-                        position: { x: mountData.xCoord, y: mountData.yCoord },
-                        poster: {
-                            title: hc1Poster.title,
-                            students: hc1Poster.students,
-                            facultyMentor: hc1Poster.facultyMentor,
-                            category: hc1Poster.category,
-                            easelBoard: hc1Poster.easelBoard
-                        }
-                    });
-                }
-                return; // Skip creating a mount for HC-1
+            const lonePoster = mountPosters.find(poster => this.isLoneMarkerBoard(poster.easelBoard));
+            if (lonePoster && mountPosters.length === 1) {
+                this.addLoneMarker({
+                    id: `lone-marker-${lonePoster.easelBoard}`,
+                    position: { x: mountData.xCoord, y: mountData.yCoord },
+                    orientation: mountData.orientation,
+                    poster: {
+                        title: lonePoster.title,
+                        students: lonePoster.students,
+                        facultyMentor: lonePoster.facultyMentor,
+                        category: lonePoster.category,
+                        easelBoard: lonePoster.easelBoard
+                    }
+                });
+                return;
             }
             
             const orientation = mountData.orientation || 'vertical';

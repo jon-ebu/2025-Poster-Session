@@ -176,56 +176,55 @@
             transform: scale(0.9);
             transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
             pointer-events: none;
-            z-index: 9999;
+            z-index: 10020;
+            --arrow-size: 14px;
+            --arrow-base: 24px;
             /* Dynamic positioning and arrow will be set via JavaScript */
         }
 
-        .info-panel::before {
+                .info-panel::before {
             content: '';
             position: absolute;
-            width: 0;
-            height: 0;
-            border: var(--arrow-size, 12px) solid transparent;
+            width: var(--arrow-base, 24px);
+            height: var(--arrow-size, 12px);
+            background: white;
+            clip-path: polygon(50% 0, 0 100%, 100% 100%);
             filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.15));
-            transition: all 0.2s ease;
+            transition: transform 0.2s ease;
             pointer-events: none; /* Critical: arrow won't interfere with hover */
         }
 
         /* Arrow pointing up (tooltip below marker) */
-        .info-panel[style*="--arrow-side: top"]::before {
+        .info-panel[style*='--arrow-side: top']::before {
             left: var(--arrow-position, 50px);
-            top: calc(-0.7 * var(--arrow-size, 12px)); /* Shorter extension */
-            border-bottom-color: white;
-            border-top: none;
-            transform: translateX(-50%);
+            top: calc(-1 * var(--arrow-size, 14px) + 2px);
+            transform: translateX(-50%) rotate(0deg);
         }
+
 
         /* Arrow pointing down (tooltip above marker) */
-        .info-panel[style*="--arrow-side: bottom"]::before {
+        .info-panel[style*='--arrow-side: bottom']::before {
             left: var(--arrow-position, 50px);
-            bottom: calc(-0.7 * var(--arrow-size, 12px)); /* Shorter extension */
-            border-top-color: white;
-            border-bottom: none;
-            transform: translateX(-50%);
+            bottom: calc(-1 * var(--arrow-size, 14px) + 2px);
+            transform: translateX(-50%) rotate(180deg);
         }
+
 
         /* Arrow pointing right (tooltip left of marker) */
-        .info-panel[style*="--arrow-side: right"]::before {
-            right: calc(-0.7 * var(--arrow-size, 12px)); /* Shorter extension */
+        .info-panel[style*='--arrow-side: right']::before {
             top: var(--arrow-position, 30px);
-            border-left-color: white;
-            border-right: none;
-            transform: translateY(-50%);
+            right: calc(-1 * var(--arrow-size, 14px) + 2px);
+            transform: translateY(-50%) rotate(90deg);
         }
 
+
         /* Arrow pointing left (tooltip right of marker) */
-        .info-panel[style*="--arrow-side: left"]::before {
-            left: calc(-0.7 * var(--arrow-size, 12px)); /* Shorter extension */
+        .info-panel[style*='--arrow-side: left']::before {
             top: var(--arrow-position, 30px);
-            border-right-color: white;
-            border-left: none;
-            transform: translateY(-50%);
+            left: calc(-1 * var(--arrow-size, 14px) + 2px);
+            transform: translateY(-50%) rotate(-90deg);
         }
+
 
         .info-panel.active {
             opacity: 1;
@@ -237,6 +236,9 @@
 
 
         .info-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             font-size: 1.8rem;
             font-weight: 600;
             color: #1976d2;
@@ -244,6 +246,34 @@
             line-height: 1.3;
             border-bottom: 1px solid #e0e0e0;
             padding-bottom: 0.5rem;
+        }
+
+        .info-title .title-text {
+            display: inline-block;
+            line-height: 1.2;
+        }
+
+        .easel-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .easel-pill__svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .easel-pill__svg text {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-weight: 700;
+            dominant-baseline: middle;
+            text-anchor: middle;
+            pointer-events: none;
         }
 
         .info-description {
@@ -273,7 +303,8 @@
 
 
         .control-btn {
-            background: white;
+            background: #E57200;
+            background: rgba(229, 114, 0, 0.9);
             border: none;
             border-radius: 8px;
             width: 44px;
@@ -281,18 +312,22 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 12px rgba(229, 114, 0, 0.35);
             cursor: pointer;
             font-size: 18px;
-            color: #666;
+            color: #fff;
             transition: all 0.3s ease;
             z-index: 10001; /* Ensure individual buttons are also on top */
             position: relative; /* Need position for z-index to work */
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
         }
 
         .control-btn:hover {
-            background: #f5f5f5;
+            background: rgba(229, 114, 0, 1);
+            color: #fff;
             transform: scale(1.05);
+            box-shadow: 0 4px 14px rgba(229, 114, 0, 0.4);
         }
 
 
@@ -481,7 +516,7 @@
         }
         
         .marker-sibling-faded {
-            opacity: 0.45;
+            opacity: 0.25;
             transition: opacity 0.3s ease;
         }
         
@@ -757,6 +792,8 @@
                     return '#000000';
                 case 'HC':
                     return '#FFD700';
+                case 'BHC':
+                    return '#FFD700';
                 case 'HSA':
                     return '#20B2AA';
                 case 'HSAM':
@@ -780,6 +817,33 @@
         // Global variables for marker management
         let markerObjs = [];
         let allMarkers = [];
+
+        function computeMarkerCoordinates(markerGroup, markerCircle) {
+            if (!markerGroup || !markerCircle) {
+                return null;
+            }
+
+            let translateX = 0;
+            let translateY = 0;
+            const transformAttr = markerGroup.getAttribute('transform') || '';
+            const translateMatch = transformAttr.match(/translate\(\s*([\-\d.]+)(?:[\s,]+([\-\d.]+))?/i);
+
+            if (translateMatch) {
+                translateX = parseFloat(translateMatch[1]) || 0;
+                translateY = translateMatch[2] !== undefined ? parseFloat(translateMatch[2]) || 0 : 0;
+            }
+
+            const rawCx = markerCircle.cx && markerCircle.cx.baseVal ? markerCircle.cx.baseVal.value : parseFloat(markerCircle.getAttribute('cx'));
+            const rawCy = markerCircle.cy && markerCircle.cy.baseVal ? markerCircle.cy.baseVal.value : parseFloat(markerCircle.getAttribute('cy'));
+
+            const cx = Number.isFinite(rawCx) ? rawCx : 0;
+            const cy = Number.isFinite(rawCy) ? rawCy : 0;
+
+            return {
+                x: translateX + cx,
+                y: translateY + cy
+            };
+        }
 
         function displayTable(tableData) {
             const table = document.getElementById("tsvTable");
@@ -887,7 +951,21 @@
                         // Step 4: Fade others → add marker-faded to non-selected markers
                         console.log('=== STEP 4: Fade others → add marker-faded to non-selected markers ===');
                         fadeOtherMarkers(highlightedMarker);
-                        
+
+                        if (highlightedMarker) {
+                            if (!highlightedMarker.coordinates) {
+                                highlightedMarker.coordinates = computeMarkerCoordinates(highlightedMarker.marker, highlightedMarker.circle);
+                            }
+
+                            if (highlightedMarker.coordinates && window.posterMap && typeof window.posterMap.centerOnCoordinates === 'function') {
+                                window.posterMap.centerOnCoordinates(
+                                    highlightedMarker.coordinates.x,
+                                    highlightedMarker.coordinates.y,
+                                    { animate: true }
+                                );
+                            }
+                        }
+
                         // Step 6: Toggle row → add selected on the table row
                         console.log('=== STEP 6: Toggle row → add selected on the table row ===');
                         $(this).addClass('selected');
@@ -917,11 +995,31 @@
         }
 
         // Marker management functions
+        // Sibling marker fading helpers
+        function clearSiblingFade() {
+            document.querySelectorAll('.marker-sibling-faded').forEach(element => {
+                element.classList.remove('marker-sibling-faded');
+            });
+        }
+
+        function applySiblingFade(markerData) {
+            clearSiblingFade();
+            if (!markerData || !markerData.partnerCircles || markerData.partnerCircles.length === 0) {
+                return;
+            }
+            markerData.partnerCircles.forEach(circle => {
+                if (circle?.classList) {
+                    circle.classList.add('marker-sibling-faded');
+                }
+            });
+        }
+
         function highlightMarkerByEasel(easelBoard) {
             console.log(`Function called with easelBoard: ${easelBoard}`);
             console.log(`allMarkers array length: ${allMarkers.length}`);
             
             removeMarkerHighlights();
+            clearSiblingFade();
             
             let targetMarkerData = null;
             
@@ -940,12 +1038,16 @@
             
             const markerGroup = targetMarkerData.marker;
             const markerCircle = targetMarkerData.circle || markerGroup;
-            
+
             if (!markerGroup || !markerCircle) {
                 console.error(`ERROR: Marker element missing for easel: ${easelBoard}`);
                 return null;
             }
-            
+
+            if (!targetMarkerData.coordinates) {
+                targetMarkerData.coordinates = computeMarkerCoordinates(markerGroup, markerCircle);
+            }
+
             console.log('=== STEP 3: Highlight → add marker-highlight to the target marker ===');
             markerGroup.classList.remove('marker-faded');
             markerGroup.querySelectorAll('circle').forEach(circle => {
@@ -966,6 +1068,7 @@
             markerCircle.dispatchEvent(mouseEnterEvent);
             console.log('✓ Mouseenter event dispatched successfully');
             
+            applySiblingFade(targetMarkerData);
             window.currentHighlightedMarker = targetMarkerData;
             return targetMarkerData;
         }
@@ -976,6 +1079,7 @@
                 element.classList.remove('marker-highlight');
                 element.classList.remove('marker-focused');
             });
+            clearSiblingFade();
             window.currentHighlightedMarker = null;
         }
         
@@ -1024,6 +1128,8 @@
                 }
             });
 
+            applySiblingFade(selectedMarker);
+
             console.log(`✓ Faded ${fadedCount} marker groups successfully`);
         }
         
@@ -1045,6 +1151,7 @@
                     markerCircle.classList.remove('marker-highlight');
                 }
             });
+            clearSiblingFade();
         }
 
         // Fade out all markers except the hovered one (for hover effects)
@@ -1410,6 +1517,33 @@
                     });
 
                     allMarkers = nextMarkers;
+
+                    const mountGroups = new Map();
+                    allMarkers.forEach(markerObj => {
+                        if (!markerObj.partnerCircles) {
+                            markerObj.partnerCircles = [];
+                        } else {
+                            markerObj.partnerCircles.length = 0;
+                        }
+                        if (!markerObj.mountId) {
+                            return;
+                        }
+                        if (!mountGroups.has(markerObj.mountId)) {
+                            mountGroups.set(markerObj.mountId, []);
+                        }
+                        mountGroups.get(markerObj.mountId).push(markerObj);
+                    });
+
+                    mountGroups.forEach(group => {
+                        if (group.length > 1) {
+                            group.forEach(markerObj => {
+                                markerObj.partnerCircles = group
+                                    .filter(partner => partner !== markerObj)
+                                    .map(partner => partner.circle);
+                            });
+                        }
+                    });
+
                     console.log(`Registered ${allMarkers.length} markers for table interaction`);
                     if (allMarkers.length > 0) {
                         console.log('Sample marker data:', allMarkers[0]);
