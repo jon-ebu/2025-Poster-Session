@@ -331,6 +331,98 @@
         }
 
 
+
+            .table-toggle-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: rgba(229, 114, 0, 0.95);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    z-index: 10030;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.table-toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.22);
+}
+
+.table-toggle-btn:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 3px;
+}
+
+body.map-fullscreen {
+    background-color: #F8F6F0;
+}
+
+            body.map-fullscreen .main-content {
+    padding: 0;
+    gap: 0;
+}
+
+            body.map-fullscreen .map-container {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    height: 100%;
+    min-height: 0;
+}
+
+            body.map-fullscreen .controls {
+    top: 24px;
+    right: 24px;
+}
+
+            body.map-fullscreen .table-container {
+    position: fixed;
+    top: 100px;
+    right: 24px;
+    bottom: 24px;
+    width: 380px;
+    max-width: min(40vw, 420px);
+    margin: 0;
+    border-radius: 16px;
+    box-shadow: -12px 0 30px rgba(0,0,0,0.18);
+    background: #fff;
+    transform: translateX(calc(100% + 32px));
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: 10020;
+    display: grid;
+    grid-template-rows: auto 1fr;
+}
+
+body.map-fullscreen .table-responsive {
+    max-height: none;
+    height: 100%;
+}
+
+body.map-fullscreen .table-toggle-btn {
+    display: inline-flex;
+}
+
+            body.map-fullscreen.map-table-open .table-container {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+body.map-fullscreen.map-table-open .table-toggle-btn {
+    background: rgba(64, 64, 64, 0.9);
+}
+
         /* Prevent text selection on markers and labels */
         .svg-map text,
         .svg-map tspan,
@@ -471,25 +563,50 @@
             margin-bottom: 10px;
         }
 
+        .search-form {
+            position: relative;
+        }
+
         #searchbar {
             width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
+            padding: 12px 48px 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: #fff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #searchbar:focus {
+            outline: none;
+            border-color: #007FA3;
+            box-shadow: 0 0 0 3px rgba(0, 127, 163, 0.15);
         }
         
         #clearSearch {
-            background-color: #f8f9fa;
-            border: 1px solid #ddd;
-            border-left: none;
-            color: #6c757d;
-            padding: 8px 12px;
+            position: absolute;
+            top: 50%;
+            right: 14px;
+            transform: translateY(-50%);
+            display: none;
+            background: transparent;
+            border: none;
+            color: #000;
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 4px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
         }
         
         #clearSearch:hover {
-            background-color: #e9ecef;
-            color: #495057;
+            color: #555;
+        }
+
+        #clearSearch:focus-visible {
+            outline: 2px solid #000;
+            outline-offset: 2px;
         }
 
 
@@ -572,16 +689,14 @@
             #searchbar {
                 width: 100% !important;
                 font-size: 16px !important; /* Prevents zoom on iOS */
-                padding: 12px 15px;
-                border-radius: 8px;
-                border: 2px solid #ddd;
+                padding-right: 48px;
                 box-sizing: border-box;
             }
             
             #searchbar:focus {
-                border-color: #fdb913;
+                border-color: #007FA3;
                 outline: none;
-                box-shadow: 0 0 0 3px rgba(253, 185, 19, 0.1);
+                box-shadow: 0 0 0 3px rgba(0, 127, 163, 0.15);
             }
         }
 
@@ -674,12 +789,53 @@
                 right: 10px;
             }
             
+
             .control-btn {
                 width: 40px;
                 height: 40px;
                 font-size: 16px;
             }
-        }
+
+            body.map-fullscreen .main-content {
+                padding: 0;
+            }
+
+            body.map-fullscreen .map-container {
+                flex: 1;
+                height: auto;
+            }
+
+            body.map-fullscreen .table-container {
+                top: auto;
+                right: 0;
+                left: 0;
+                bottom: 0;
+                width: 100%;
+                height: min(60dvh, 520px);
+                max-width: none;
+                border-radius: 16px 16px 0 0;
+                transform: translateY(100%);
+                box-shadow: 0 -12px 28px rgba(0,0,0,0.18);
+            }
+
+            body.map-fullscreen .controls {
+                top: 16px;
+                right: 16px;
+            }
+
+            .table-toggle-btn {
+                left: 50%;
+                right: auto;
+                bottom: 18px;
+                transform: translateX(-50%);
+                font-size: 1.05rem;
+            }
+
+            body.map-fullscreen.map-table-open .table-container {
+                transform: translateY(0);
+            }
+
+
 
         @media (max-width: 480px) {
             .map-container {
@@ -720,6 +876,7 @@
                 <button class="control-btn" id="zoomIn" title="Zoom In">+</button>
                 <button class="control-btn" id="zoomOut" title="Zoom Out">−</button>
                 <button class="control-btn" id="resetView" title="Reset View">⌂</button>
+                <button class="control-btn" id="toggleFullscreen" title="Toggle Full Screen">&#x26F6;</button>
             </div>
 
             <div class="info-panel" id="infoPanel">
@@ -728,19 +885,13 @@
             </div>
         </div>
 
-        <div class="table-container">
+        <div class="table-container" id="tablePanel">
             <div id="filter-form-container">
-                <form class="form-inline">
-                    <div class="form-group">
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="searchbar" placeholder="Search posters...">
-                            <span class="input-group-btn">
-                                <button class="btn btn-default" type="button" id="clearSearch" style="display: none;">
-                                    <span class="glyphicon glyphicon-remove"></span>
-                                </button>
-                            </span>
-                        </div>
-                    </div>
+                <form class="search-form" role="search">
+                    <input type="text" class="form-control" id="searchbar" placeholder="Search posters..." aria-label="Search posters">
+                    <button type="button" id="clearSearch" aria-label="Clear search">
+                        <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                    </button>
                 </form>
             </div>
             <div class="table-responsive">
@@ -749,6 +900,10 @@
             </div>
         </div>
     </div>
+
+    <button class="table-toggle-btn" id="tableToggle" type="button" aria-expanded="false" aria-controls="tablePanel">
+        Show Table
+    </button>
 
     <!-- Bootstrap CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
@@ -946,11 +1101,27 @@
                     } else {
                         // Step 2: Find marker → search allMarkers for matching easelBoardId
                         console.log('=== STEP 2: Find marker → search allMarkers for matching easelBoardId ===');
-                        const highlightedMarker = highlightMarkerByEasel(easelBoard);
+                        if (window.posterMap && typeof window.posterMap.hideInfo === 'function') {
+                            window.posterMap.hideInfo();
+                        }
+
+                        const highlightedMarker = highlightMarkerByEasel(easelBoard, { deferTooltip: true });
                         
                         // Step 4: Fade others → add marker-faded to non-selected markers
                         console.log('=== STEP 4: Fade others → add marker-faded to non-selected markers ===');
                         fadeOtherMarkers(highlightedMarker);
+
+                        const triggerTooltip = () => {
+                            if (!highlightedMarker || !highlightedMarker.circle) {
+                                return;
+                            }
+                            const mouseEnterEvent = new MouseEvent('mouseenter', {
+                                view: window,
+                                bubbles: true,
+                                cancelable: true
+                            });
+                            highlightedMarker.circle.dispatchEvent(mouseEnterEvent);
+                        };
 
                         if (highlightedMarker) {
                             if (!highlightedMarker.coordinates) {
@@ -961,8 +1132,13 @@
                                 window.posterMap.centerOnCoordinates(
                                     highlightedMarker.coordinates.x,
                                     highlightedMarker.coordinates.y,
-                                    { animate: true }
+                                    {
+                                        animate: true,
+                                        onComplete: triggerTooltip
+                                    }
                                 );
+                            } else {
+                                triggerTooltip();
                             }
                         }
 
@@ -1014,7 +1190,8 @@
             });
         }
 
-        function highlightMarkerByEasel(easelBoard) {
+        function highlightMarkerByEasel(easelBoard, options = {}) {
+            const { deferTooltip = false } = options;
             console.log(`Function called with easelBoard: ${easelBoard}`);
             console.log(`allMarkers array length: ${allMarkers.length}`);
             
@@ -1059,14 +1236,16 @@
             console.log('✓ Highlight classes applied to marker circle');
             console.log('Marker circle classes:', markerCircle.classList.toString());
             
-            console.log('=== STEP 5: Show tooltip → dispatch mouseenter on the target marker ===');
-            const mouseEnterEvent = new MouseEvent('mouseenter', {
-                view: window,
-                bubbles: true,
-                cancelable: true
-            });
-            markerCircle.dispatchEvent(mouseEnterEvent);
-            console.log('✓ Mouseenter event dispatched successfully');
+            if (!deferTooltip) {
+                console.log('=== STEP 5: Show tooltip → dispatch mouseenter on the target marker ===');
+                const mouseEnterEvent = new MouseEvent('mouseenter', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                markerCircle.dispatchEvent(mouseEnterEvent);
+                console.log('✓ Mouseenter event dispatched successfully');
+            }
             
             applySiblingFade(targetMarkerData);
             window.currentHighlightedMarker = targetMarkerData;
@@ -1256,7 +1435,7 @@
                 // Show/hide clear button based on input content
                 searchInput.addEventListener('input', function() {
                     if (this.value.length > 0) {
-                        clearButton.style.display = 'inline-block';
+                        clearButton.style.display = 'inline-flex';
                     } else {
                         clearButton.style.display = 'none';
                     }
@@ -1265,20 +1444,50 @@
         }
 
         function updateMarkerVisibility(visibleEasels) {
+            const mountStates = new Map();
+
             allMarkers.forEach(markerData => {
                 const markerGroup = markerData.marker;
-
                 if (!markerGroup) {
                     return;
                 }
 
-                if (visibleEasels.has(markerData.easelBoardId)) {
+                const shouldShowCircle = visibleEasels.has(markerData.easelBoardId);
+                const state = mountStates.get(markerGroup) || { showGroup: false, circles: [] };
+
+                if (shouldShowCircle) {
+                    state.showGroup = true;
+                }
+
+                state.circles.push({
+                    circle: markerData.circle,
+                    shouldShow: shouldShowCircle
+                });
+
+                mountStates.set(markerGroup, state);
+            });
+
+            mountStates.forEach((state, markerGroup) => {
+                if (!markerGroup) {
+                    return;
+                }
+
+                if (state.showGroup) {
                     markerGroup.style.display = '';
                     markerGroup.classList.remove('marker-hidden');
                 } else {
                     markerGroup.style.display = 'none';
                     markerGroup.classList.add('marker-hidden');
                 }
+
+                state.circles.forEach(({ circle, shouldShow }) => {
+                    if (!circle) {
+                        return;
+                    }
+
+                    circle.style.display = shouldShow ? '' : 'none';
+                    circle.classList.toggle('marker-hidden', !shouldShow);
+                });
             });
         }
         
@@ -1479,7 +1688,8 @@
                                         circle: sideACircle,
                                         easelBoardId: element.sideA.easelBoard,
                                         mountId: id,
-                                        side: 'A'
+                                        side: 'A',
+                                        coordinates: computeMarkerCoordinates(markerGroup, sideACircle)
                                     });
                                 }
                             }
@@ -1492,7 +1702,8 @@
                                         circle: sideBCircle,
                                         easelBoardId: element.sideB.easelBoard,
                                         mountId: id,
-                                        side: 'B'
+                                        side: 'B',
+                                        coordinates: computeMarkerCoordinates(markerGroup, sideBCircle)
                                     });
                                 }
                             }
@@ -1507,7 +1718,8 @@
                                         circle: loneCircle,
                                         easelBoardId: element.poster.easelBoard,
                                         mountId: id,
-                                        side: null
+                                        side: null,
+                                        coordinates: computeMarkerCoordinates(markerGroup, loneCircle)
                                     });
                                 }
                             }

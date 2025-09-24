@@ -746,16 +746,17 @@ class LayoutAPI {
             const panelWidth = Math.floor(basePanelWidth * (1 + contentFactor * 0.3)); // Up to 30% wider
             const panelHeight = Math.floor(basePanelHeight * (1 + contentFactor * 0.4)); // Up to 40% taller
             
-            // Dynamic gap based on tooltip size - bigger tooltips need more distance
-            const baseGap = isMobile ? 35 : 50; // Increased base gap to prevent overlap
-            const dynamicGap = Math.floor(baseGap + (panelHeight - basePanelHeight) * 0.3);
-            const gap = dynamicGap;
-            const margin = isMobile ? 15 : 20;
-            
             // Calculate dynamic arrow size early for use in positioning
             const baseArrowSize = isMobile ? 9 : 12;
             const sizeMultiplier = Math.min(contentFactor, 1.3); // Cap multiplier
             const dynamicArrowSize = Math.floor(baseArrowSize * (1 + sizeMultiplier * 0.4)); // Up to 40% larger
+            
+            // Dynamic gap based on tooltip size - closer by default but still hover-safe
+            const baseGap = isMobile ? 18 : 24; // Bring tooltip nearer to marker
+            const hoverBuffer = dynamicArrowSize + (isMobile ? 6 : 9); // Leave room for cursor between marker and panel
+            const dynamicGap = baseGap + Math.max(panelHeight - basePanelHeight, 0) * 0.15;
+            const gap = Math.max(hoverBuffer, Math.floor(dynamicGap));
+            const margin = isMobile ? 15 : 20;
             
             // Get marker position relative to viewport
             const markerRect = markerElement.getBoundingClientRect();
@@ -798,7 +799,7 @@ class LayoutAPI {
                 panelY = Math.min(viewHeight - panelHeight - margin, markerCenterY + gap);
                 arrowSide = 'top';
                 // Better arrow position constraints - ensure arrow stays well within bounds
-                const arrowBuffer = dynamicArrowSize + 5; // Extra buffer based on arrow size
+                const arrowBuffer = dynamicArrowSize + 3; // Extra buffer based on arrow size
                 arrowPosition = Math.max(arrowBuffer, Math.min(panelWidth - arrowBuffer, markerCenterX - panelX));
                 
             } else if (markerCenterY > bottomZone) {
@@ -824,7 +825,7 @@ class LayoutAPI {
                     panelY = Math.max(margin, Math.min(viewHeight - panelHeight - margin, markerCenterY - panelHeight/2));
                     arrowSide = 'left';
                     // Better arrow position constraints for vertical arrows
-                    const arrowBuffer = dynamicArrowSize + 5;
+                const arrowBuffer = dynamicArrowSize + 3;
                     arrowPosition = Math.max(arrowBuffer, Math.min(panelHeight - arrowBuffer, markerCenterY - panelY));
                 } else if (spaceLeft > panelWidth + gap) {
                     // Position to the left
@@ -832,7 +833,7 @@ class LayoutAPI {
                     panelY = Math.max(margin, Math.min(viewHeight - panelHeight - margin, markerCenterY - panelHeight/2));
                     arrowSide = 'right';
                     // Better arrow position constraints for vertical arrows
-                    const arrowBuffer = dynamicArrowSize + 5;
+                const arrowBuffer = dynamicArrowSize + 3;
                     arrowPosition = Math.max(arrowBuffer, Math.min(panelHeight - arrowBuffer, markerCenterY - panelY));
                 } else if (spaceBottom > panelHeight + gap) {
                     // Fall back to below
@@ -1251,16 +1252,17 @@ class LayoutAPI {
             const panelWidth = Math.floor(basePanelWidth * (1 + contentFactor * 0.3)); // Up to 30% wider
             const panelHeight = Math.floor(basePanelHeight * (1 + contentFactor * 0.4)); // Up to 40% taller
             
-            // Dynamic gap based on tooltip size - bigger tooltips need more distance
-            const baseGap = isMobile ? 35 : 50; // Increased base gap to prevent overlap
-            const dynamicGap = Math.floor(baseGap + (panelHeight - basePanelHeight) * 0.3);
-            const gap = dynamicGap;
-            const margin = isMobile ? 15 : 20;
-            
             // Calculate dynamic arrow size early for use in positioning
             const baseArrowSize = isMobile ? 9 : 12;
             const sizeMultiplier = Math.min(contentFactor, 1.3); // Cap multiplier
             const dynamicArrowSize = Math.floor(baseArrowSize * (1 + sizeMultiplier * 0.4)); // Up to 40% larger
+            
+            // Dynamic gap based on tooltip size - keep close while preserving hover buffer
+            const baseGap = isMobile ? 22 : 30;
+            const hoverBuffer = dynamicArrowSize + (isMobile ? 6 : 10);
+            const dynamicGap = baseGap + Math.max(panelHeight - basePanelHeight, 0) * 0.18;
+            const gap = Math.max(hoverBuffer, Math.floor(dynamicGap));
+            const margin = isMobile ? 15 : 20;
             
             // Get marker position relative to viewport
             const markerRect = markerElement.getBoundingClientRect();

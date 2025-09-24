@@ -7,6 +7,27 @@ class PosterSessionMap {
         this.infoPanel = document.getElementById('infoPanel');
         this.infoTitle = document.getElementById('infoTitle');
         this.infoDescription = document.getElementById('infoDescription');
+        this.fullscreenBtn = document.getElementById('toggleFullscreen');
+        this.tableToggleBtn = document.getElementById('tableToggle');
+        this.tablePanel = document.getElementById('tablePanel');
+        this.isFullScreen = document.body.classList.contains('map-fullscreen');
+        this.isTableOpen = document.body.classList.contains('map-table-open');
+        this.handleGlobalKeydown = (event) => {
+            if (event.key !== 'Escape') {
+                return;
+            }
+
+            if (this.isFullScreen && this.isTableOpen) {
+                event.preventDefault();
+                this.toggleTable(false);
+                return;
+            }
+
+            if (this.isFullScreen) {
+                event.preventDefault();
+                this.toggleFullScreen(false);
+            }
+        };
         
         this.currentZoom = 1;
         this.minZoom = 1;
@@ -18,12 +39,14 @@ class PosterSessionMap {
         this.panInertiaFrame = null;
         this.selectedArea = null;
         this.panAnimationFrame = null;
+        this.panAnimationComplete = null;
 
         this.baseWidth = 1150;
         this.baseHeight = 1360;
         
         this.initializeData();
         this.initializeEventListeners();
+        this.updateFullScreenUI();
         this.renderMap();
     }
 
@@ -42,6 +65,16 @@ class PosterSessionMap {
         document.getElementById('zoomIn').addEventListener('click', () => this.zoomIn());
         document.getElementById('zoomOut').addEventListener('click', () => this.zoomOut());
         document.getElementById('resetView').addEventListener('click', () => this.resetView());
+
+        if (this.fullscreenBtn) {
+            this.fullscreenBtn.addEventListener('click', () => this.toggleFullScreen());
+        }
+
+        if (this.tableToggleBtn) {
+            this.tableToggleBtn.addEventListener('click', () => this.toggleTable());
+        }
+
+        document.addEventListener('keydown', this.handleGlobalKeydown);
 
         // Pan functionality (touch and mouse)
 let isPanning = false;
@@ -337,12 +370,119 @@ let isPanning = false;
 
     resetView() {
         this.stopPanInertia(true);
-        this.stopPanAnimation();
-        this.currentZoom = 1;
-        this.panX = 0;
-        this.panY = 0;
-        this.updateViewBox();
-        this.hideInfo();
+       this.stopPanAnimation();
+       this.currentZoom = 1;
+       this.panX = 0;
+       this.panY = 0;
+       this.updateViewBox();
+       this.hideInfo();
+    }
+
+    toggleFullScreen(forceState) {
+        const shouldEnable = typeof forceState === 'boolean' ? forceState : !this.isFullScreen;
+
+        if (shouldEnable === this.isFullScreen) {
+            return;
+        }
+
+        this.isFullScreen = shouldEnable;
+        document.body.classList.toggle('map-fullscreen', this.isFullScreen);
+        this.setTableOpen(false);
+        this.updateFullScreenUI();
+    }
+
+    toggleTable(forceOpen) {
+        const desiredState = typeof forceOpen === 'boolean' ? forceOpen : !this.isTableOpen;
+        this.setTableOpen(desiredState);
+    }
+
+    setTableOpen(shouldOpen) {
+        const normalized = Boolean(shouldOpen);
+
+        if (!this.isFullScreen) {
+            this.isTableOpen = false;
+            document.body.classList.remove('map-table-open');
+            this.updateTableToggleUI();
+            this.releaseTemporaryTableFocus();
+            return;
+        }
+
+        if (normalized === this.isTableOpen) {
+            this.updateTableToggleUI();
+            return;
+        }
+
+        this.isTableOpen = normalized;
+        document.body.classList.toggle('map-table-open', this.isTableOpen);
+        this.updateTableToggleUI();
+
+        if (this.isTableOpen) {
+            this.focusTablePanel();
+        } else {
+            this.releaseTemporaryTableFocus();
+        }
+    }
+
+    updateFullScreenUI() {
+        if (this.fullscreenBtn) {
+            const pressed = this.isFullScreen ? 'true' : 'false';
+            this.fullscreenBtn.setAttribute('aria-pressed', pressed);
+            this.fullscreenBtn.setAttribute('aria-label', this.isFullScreen ? 'Exit full screen view' : 'View map full screen');
+            this.fullscreenBtn.setAttribute('title', this.isFullScreen ? 'Exit Full Screen' : 'Full Screen Map');
+        }
+
+        if (!this.isFullScreen) {
+            this.releaseTemporaryTableFocus();
+        }
+
+        this.updateTableToggleUI();
+    }
+
+    updateTableToggleUI() {
+        if (!this.tableToggleBtn) {
+            return;
+        }
+
+        const expanded = this.isFullScreen && this.isTableOpen;
+        this.tableToggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        this.tableToggleBtn.setAttribute('aria-label', expanded ? 'Hide poster table' : 'Show poster table');
+        this.tableToggleBtn.setAttribute('title', expanded ? 'Hide poster table' : 'Show poster table');
+        this.tableToggleBtn.textContent = expanded ? 'Hide Table' : 'Show Table';
+    }
+
+    focusTablePanel() {
+        if (!this.tablePanel) {
+            return;
+        }
+
+        const hadTabIndex = this.tablePanel.hasAttribute('tabindex');
+        if (!hadTabIndex) {
+            this.tablePanel.setAttribute('tabindex', '-1');
+            this.tablePanel.dataset.tempTabindex = 'true';
+        }
+
+        try {
+            this.tablePanel.focus({ preventScroll: true });
+        } catch (err) {
+            this.tablePanel.focus();
+        }
+
+        if (!hadTabIndex) {
+            requestAnimationFrame(() => {
+                this.releaseTemporaryTableFocus();
+            });
+        }
+    }
+
+    releaseTemporaryTableFocus() {
+        if (!this.tablePanel) {
+            return;
+        }
+
+        if (this.tablePanel.dataset && this.tablePanel.dataset.tempTabindex === 'true') {
+            this.tablePanel.removeAttribute('tabindex');
+            delete this.tablePanel.dataset.tempTabindex;
+        }
     }
 
     updateViewBox() {
@@ -359,6 +499,7 @@ let isPanning = false;
             cancelAnimationFrame(this.panAnimationFrame);
             this.panAnimationFrame = null;
         }
+        this.panAnimationComplete = null;
     }
 
     centerOnCoordinates(x, y, options = {}) {
@@ -366,7 +507,7 @@ let isPanning = false;
             return;
         }
 
-        const { animate = true, duration = 300 } = options;
+        const { animate = true, duration = 300, onComplete } = options;
 
         this.stopPanInertia(true);
         this.stopPanAnimation();
@@ -374,11 +515,14 @@ let isPanning = false;
         const targetPan = this.calculatePanForCoordinates(x, y);
 
         if (animate && duration > 0) {
-            this.animatePan(targetPan.panX, targetPan.panY, duration);
+            this.animatePan(targetPan.panX, targetPan.panY, duration, onComplete);
         } else {
             this.panX = targetPan.panX;
             this.panY = targetPan.panY;
             this.updateViewBox();
+            if (typeof onComplete === 'function') {
+                onComplete();
+            }
         }
     }
 
@@ -403,10 +547,11 @@ let isPanning = false;
         };
     }
 
-    animatePan(targetPanX, targetPanY, duration = 300) {
+    animatePan(targetPanX, targetPanY, duration = 300, onComplete) {
         const startPanX = this.panX;
         const startPanY = this.panY;
         const startTime = performance.now();
+        this.panAnimationComplete = typeof onComplete === 'function' ? onComplete : null;
 
         const step = (now) => {
             const elapsed = now - startTime;
@@ -423,6 +568,11 @@ let isPanning = false;
                 this.panAnimationFrame = requestAnimationFrame(step);
             } else {
                 this.panAnimationFrame = null;
+                if (this.panAnimationComplete) {
+                    const callback = this.panAnimationComplete;
+                    this.panAnimationComplete = null;
+                    callback();
+                }
             }
         };
 

@@ -19,7 +19,7 @@
 
 # Markers
 [X] When marker is focused on, fade the marker it shares the mount with
-[X] Fix bug when marker is focused on it stays in an increased size
+[X] Fix bug when marker is focused on it stays in an increased size when unfocused/unselected. It should return to normal size after some point.
 [] See if slightly increasing the size of the markers across the board helps with readability
 [X] Change BHC-1 to Gold
 [X] Update Lone Markers to still have board
