@@ -67,10 +67,10 @@ class LayoutAPI {
                 color = "#FFA500"; // orange (EP-1)
                 break;
             case "HC":
-                color = "#FFD700"; // gold (HC-1)
+                color = "#B59410"; // rich gold (HC-1)
                 break;
             case "BHC":
-                color = "#FFD700"; // gold (BHC-1 matches HC color)
+                color = "#FFA500"; // orange (matches BCS series)
                 break;
             case "HSA":
                 color = "#20B2AA"; // light teal (HSA-1)
@@ -124,12 +124,16 @@ class LayoutAPI {
      */
     getTextColorForBackground(backgroundColor) {
         // Light/bright colors that need black text for better contrast
-        const lightColors = ['#87CEEB', '#20B2AA', '#FFA500', '#FFD700']; // Light blue, light teal, bright orange, gold
-        
+        const lightColors = ['#87CEEB', '#20B2AA', '#FFA500', '#FFD700']; // Colors requiring dark text for contrast
+
         if (lightColors.includes(backgroundColor)) {
             return 'black';
         }
-        
+
+        if (backgroundColor === '#B59410') {
+            return 'white';
+        }
+
         // Default to white for all other colors
         return 'white';
     }
